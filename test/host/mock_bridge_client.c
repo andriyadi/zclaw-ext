@@ -1,5 +1,5 @@
-#include "mock_email_bridge.h"
-#include "email_bridge.h"
+#include "mock_bridge_client.h"
+#include "bridge_client.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,7 +18,7 @@ static char s_last_path[MOCK_BRIDGE_PATH_MAX + 1] = {0};
 static char s_last_payload[MOCK_BRIDGE_PAYLOAD_MAX + 1] = {0};
 static int s_post_calls = 0;
 
-void mock_email_bridge_reset(void)
+void mock_bridge_client_reset(void)
 {
     s_configured = true;
     s_response_err = ESP_OK;
@@ -30,12 +30,12 @@ void mock_email_bridge_reset(void)
     s_post_calls = 0;
 }
 
-void mock_email_bridge_set_configured(bool configured)
+void mock_bridge_client_set_configured(bool configured)
 {
     s_configured = configured;
 }
 
-void mock_email_bridge_set_response(esp_err_t err, int status, bool truncated, const char *response)
+void mock_bridge_client_set_response(esp_err_t err, int status, bool truncated, const char *response)
 {
     s_response_err = err;
     s_response_status = status;
@@ -43,27 +43,27 @@ void mock_email_bridge_set_response(esp_err_t err, int status, bool truncated, c
     snprintf(s_response_body, sizeof(s_response_body), "%s", response ? response : "");
 }
 
-const char *mock_email_bridge_last_path(void)
+const char *mock_bridge_client_last_path(void)
 {
     return s_last_path;
 }
 
-const char *mock_email_bridge_last_payload(void)
+const char *mock_bridge_client_last_payload(void)
 {
     return s_last_payload;
 }
 
-int mock_email_bridge_post_calls(void)
+int mock_bridge_client_post_calls(void)
 {
     return s_post_calls;
 }
 
-bool email_bridge_is_configured(void)
+bool bridge_client_is_configured(void)
 {
     return s_configured;
 }
 
-esp_err_t email_bridge_post_json(const char *path,
+esp_err_t bridge_client_post_json(const char *path,
                                  const cJSON *payload,
                                  char *response_out,
                                  size_t response_out_len,

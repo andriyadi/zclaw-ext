@@ -1,5 +1,5 @@
 #include "tools_handlers.h"
-#include "email_bridge.h"
+#include "bridge_client.h"
 #include "tools_common.h"
 #include "cJSON.h"
 #include "esp_err.h"
@@ -74,12 +74,12 @@ static bool get_required_string_field(const cJSON *input,
 
 static bool check_email_bridge_ready(char *result, size_t result_len)
 {
-    if (email_bridge_is_configured()) {
+    if (bridge_client_is_configured()) {
         return true;
     }
 
     snprintf(result, result_len,
-             "Error: email bridge is not configured. Provision email_bridge_url and email_bridge_key first.");
+             "Error: email bridge is not configured. Provision bridge_url and bridge_key first.");
     return false;
 }
 
@@ -152,7 +152,7 @@ bool tools_email_send_handler(const cJSON *input, char *result, size_t result_le
     cJSON_AddStringToObject(req, "subject", subject);
     cJSON_AddStringToObject(req, "body", body);
 
-    err = email_bridge_post_json(EMAIL_SEND_PATH, req, response, sizeof(response), &status, &truncated);
+    err = bridge_client_post_json(EMAIL_SEND_PATH, req, response, sizeof(response), &status, &truncated);
     cJSON_Delete(req);
 
     if (!report_bridge_call_result("email_send", err, status, response, truncated, result, result_len)) {
@@ -247,7 +247,7 @@ bool tools_email_list_handler(const cJSON *input, char *result, size_t result_le
         cJSON_AddStringToObject(req, "label", label_json->valuestring);
     }
 
-    err = email_bridge_post_json(EMAIL_LIST_PATH, req, response, sizeof(response), &status, &truncated);
+    err = bridge_client_post_json(EMAIL_LIST_PATH, req, response, sizeof(response), &status, &truncated);
     cJSON_Delete(req);
 
     if (!report_bridge_call_result("email_list", err, status, response, truncated, result, result_len)) {
@@ -346,7 +346,7 @@ bool tools_email_read_handler(const cJSON *input, char *result, size_t result_le
     cJSON_AddStringToObject(req, "id", id);
     cJSON_AddNumberToObject(req, "max_chars", max_chars);
 
-    err = email_bridge_post_json(EMAIL_READ_PATH, req, response, sizeof(response), &status, &truncated);
+    err = bridge_client_post_json(EMAIL_READ_PATH, req, response, sizeof(response), &status, &truncated);
     cJSON_Delete(req);
 
     if (!report_bridge_call_result("email_read", err, status, response, truncated, result, result_len)) {

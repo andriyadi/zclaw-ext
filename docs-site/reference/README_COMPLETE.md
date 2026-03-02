@@ -103,7 +103,7 @@ Interactive `install.sh` flashing defaults to standard mode; flash encryption is
 On Linux, `install.sh` auto-detects `apt-get`, `pacman`, `dnf`, or `zypper` for dependency installs.
 If no supported manager is detected, it skips auto-install and prints manual package guidance.
 In non-interactive runs, unanswered prompts default to `no` unless you pass `-y` (or set explicit install flags/saved defaults).
-Optional email bridge credentials can be provisioned with `--email-bridge-url` and `--email-bridge-key`.
+Optional email bridge credentials can be provisioned with `--bridge-url` and `--bridge-key`.
 
 <details>
 <summary>You can also preseed install flags (click to expand)</summary>
@@ -273,8 +273,8 @@ Email features are bridge-backed (for example Gmail OAuth + API calls on a host/
 Firmware stores only bridge URL/key and calls HTTPS bridge endpoints.
 
 - Provision with:
-  - `./scripts/provision.sh --email-bridge-url https://<bridge-host> --email-bridge-key <token>`
-  - or profile values `ZCLAW_EMAIL_BRIDGE_URL` / `ZCLAW_EMAIL_BRIDGE_KEY` via `provision-dev.sh`
+  - `./scripts/provision.sh --bridge-url https://<bridge-host> --bridge-key <token>`
+  - or profile values `ZCLAW_BRIDGE_URL` / `ZCLAW_BRIDGE_KEY` via `provision-dev.sh`
 - Bridge endpoints expected by firmware:
   - `POST /v1/email/send`
   - `POST /v1/email/list`
@@ -304,7 +304,7 @@ Host/unit coverage:
 Live device + bridge smoke path:
 
 1. Provision bridge settings:
-   - `./scripts/provision.sh --email-bridge-url https://<bridge-host> --email-bridge-key <token>`
+   - `./scripts/provision.sh --bridge-url https://<bridge-host> --bridge-key <token>`
 2. Run chat path (`./scripts/web-relay.sh` or Telegram) and exercise:
    - `email_send` with a known recipient
    - `email_list` for inbox/unread

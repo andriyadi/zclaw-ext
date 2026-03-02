@@ -14,8 +14,8 @@ API_KEY=""
 API_URL=""
 TG_TOKEN=""
 TG_CHAT_IDS=""
-EMAIL_BRIDGE_URL=""
-EMAIL_BRIDGE_KEY=""
+BRIDGE_URL=""
+BRIDGE_KEY=""
 ASSUME_YES=false
 VERIFY_API_KEY=true
 PRINT_DETECTED_SSID=false
@@ -38,8 +38,8 @@ Options:
   --tg-token <token>        Telegram bot token (optional)
   --tg-chat-id <id[,id...]> Telegram chat ID allowlist (optional)
   --tg-chat-ids <list>      Alias of --tg-chat-id
-  --email-bridge-url <url>  Email bridge base URL (optional, required for email tools)
-  --email-bridge-key <key>  Email bridge API key/token (optional)
+  --bridge-url <url>  Bridge service base URL (optional, required for bridge-backed tools)
+  --bridge-key <key>  Bridge service API key/token (optional)
   --yes                     Non-interactive (requires --api-key except ollama; SSID auto-detect if possible)
   --skip-api-check          Skip live API key verification step
   --print-detected-ssid     Print detected host WiFi SSID and exit (test/troubleshooting helper)
@@ -854,21 +854,21 @@ while [ $# -gt 0 ]; do
         --tg-chat-ids=*)
             TG_CHAT_IDS="${1#*=}"
             ;;
-        --email-bridge-url)
+        --bridge-url)
             shift
-            [ $# -gt 0 ] || { echo "Error: --email-bridge-url requires a value"; exit 1; }
-            EMAIL_BRIDGE_URL="$1"
+            [ $# -gt 0 ] || { echo "Error: --bridge-url requires a value"; exit 1; }
+            BRIDGE_URL="$1"
             ;;
-        --email-bridge-url=*)
-            EMAIL_BRIDGE_URL="${1#*=}"
+        --bridge-url=*)
+            BRIDGE_URL="${1#*=}"
             ;;
-        --email-bridge-key)
+        --bridge-key)
             shift
-            [ $# -gt 0 ] || { echo "Error: --email-bridge-key requires a value"; exit 1; }
-            EMAIL_BRIDGE_KEY="$1"
+            [ $# -gt 0 ] || { echo "Error: --bridge-key requires a value"; exit 1; }
+            BRIDGE_KEY="$1"
             ;;
-        --email-bridge-key=*)
-            EMAIL_BRIDGE_KEY="${1#*=}"
+        --bridge-key=*)
+            BRIDGE_KEY="${1#*=}"
             ;;
         --yes)
             ASSUME_YES=true
@@ -1118,11 +1118,11 @@ fi
 if [ -n "$TG_TOKEN" ] && [ -z "$TG_CHAT_IDS" ]; then
     echo "Warning: Telegram token set without chat ID allowlist; incoming messages will be ignored."
 fi
-if [ -n "$EMAIL_BRIDGE_URL" ] && [ -z "$EMAIL_BRIDGE_KEY" ]; then
-    echo "Warning: email bridge URL set without key; email tools will fail authentication."
+if [ -n "$BRIDGE_URL" ] && [ -z "$BRIDGE_KEY" ]; then
+    echo "Warning: bridge URL set without key; bridge-backed tools will fail authentication."
 fi
-if [ -n "$EMAIL_BRIDGE_KEY" ] && [ -z "$EMAIL_BRIDGE_URL" ]; then
-    echo "Warning: email bridge key set without URL; email tools will remain disabled."
+if [ -n "$BRIDGE_KEY" ] && [ -z "$BRIDGE_URL" ]; then
+    echo "Warning: bridge key set without URL; bridge-backed tools will remain disabled."
 fi
 
 NVS_GEN="$IDF_PATH/components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py"
@@ -1162,11 +1162,11 @@ trap 'rm -rf "$tmpdir"' EXIT
         printf "tg_chat_id,data,string,%s\n" "$(csv_escape "$PRIMARY_TG_CHAT_ID")"
         printf "tg_chat_ids,data,string,%s\n" "$(csv_escape "$TG_CHAT_IDS")"
     fi
-    if [ -n "$EMAIL_BRIDGE_URL" ]; then
-        printf "email_br_url,data,string,%s\n" "$(csv_escape "$EMAIL_BRIDGE_URL")"
+    if [ -n "$BRIDGE_URL" ]; then
+        printf "bridge_url,data,string,%s\n" "$(csv_escape "$BRIDGE_URL")"
     fi
-    if [ -n "$EMAIL_BRIDGE_KEY" ]; then
-        printf "email_br_key,data,string,%s\n" "$(csv_escape "$EMAIL_BRIDGE_KEY")"
+    if [ -n "$BRIDGE_KEY" ]; then
+        printf "bridge_key,data,string,%s\n" "$(csv_escape "$BRIDGE_KEY")"
     fi
 } > "$csv_file"
 
@@ -1191,11 +1191,11 @@ echo "  Model:     $MODEL"
 if [ -n "$API_URL" ]; then
     echo "  API URL:   $API_URL"
 fi
-if [ -n "$EMAIL_BRIDGE_URL" ]; then
-    echo "  Email bridge URL: $EMAIL_BRIDGE_URL"
+if [ -n "$BRIDGE_URL" ]; then
+    echo "  Bridge URL: $BRIDGE_URL"
 fi
-if [ -n "$EMAIL_BRIDGE_KEY" ]; then
-    echo "  Email bridge key: <redacted>"
+if [ -n "$BRIDGE_KEY" ]; then
+    echo "  Bridge key: <redacted>"
 fi
 echo ""
 echo "Next steps:"

@@ -18,8 +18,8 @@ API_KEY_OVERRIDE=""
 API_URL_OVERRIDE=""
 TG_TOKEN_OVERRIDE=""
 TG_CHAT_IDS_OVERRIDE=""
-EMAIL_BRIDGE_URL_OVERRIDE=""
-EMAIL_BRIDGE_KEY_OVERRIDE=""
+BRIDGE_URL_OVERRIDE=""
+BRIDGE_KEY_OVERRIDE=""
 SHOW_CONFIG=false
 WRITE_TEMPLATE=false
 SKIP_API_CHECK=false
@@ -47,8 +47,8 @@ Overrides:
   --tg-token <token>
   --tg-chat-id <id[,id...]>
   --tg-chat-ids <list>     Alias of --tg-chat-id
-  --email-bridge-url <url> Email bridge base URL
-  --email-bridge-key <key> Email bridge API key/token
+  --bridge-url <url> Bridge service base URL
+  --bridge-key <key> Bridge service API key/token
 
 Examples:
   $0 --write-template
@@ -72,8 +72,8 @@ ZCLAW_WIFI_PASS=YourWifiPassword
 ZCLAW_BACKEND=openai
 ZCLAW_MODEL=gpt-5.2
 ZCLAW_API_URL=
-ZCLAW_EMAIL_BRIDGE_URL=
-ZCLAW_EMAIL_BRIDGE_KEY=
+ZCLAW_BRIDGE_URL=
+ZCLAW_BRIDGE_KEY=
 
 # Prefer setting one API key here:
 ZCLAW_API_KEY=
@@ -217,7 +217,7 @@ print_redacted_command() {
                 printf " %q" "$arg"
                 next_secret=true
                 ;;
-            --email-bridge-key)
+            --bridge-key)
                 printf " %q" "$arg"
                 next_secret=true
                 ;;
@@ -287,14 +287,14 @@ while [ $# -gt 0 ]; do
             TG_CHAT_IDS_OVERRIDE="$2"
             shift 2
             ;;
-        --email-bridge-url)
-            [ $# -ge 2 ] || { echo "Error: --email-bridge-url requires a value."; exit 1; }
-            EMAIL_BRIDGE_URL_OVERRIDE="$2"
+        --bridge-url)
+            [ $# -ge 2 ] || { echo "Error: --bridge-url requires a value."; exit 1; }
+            BRIDGE_URL_OVERRIDE="$2"
             shift 2
             ;;
-        --email-bridge-key)
-            [ $# -ge 2 ] || { echo "Error: --email-bridge-key requires a value."; exit 1; }
-            EMAIL_BRIDGE_KEY_OVERRIDE="$2"
+        --bridge-key)
+            [ $# -ge 2 ] || { echo "Error: --bridge-key requires a value."; exit 1; }
+            BRIDGE_KEY_OVERRIDE="$2"
             shift 2
             ;;
         --show-config)
@@ -352,8 +352,8 @@ MODEL="${MODEL_OVERRIDE:-${ZCLAW_MODEL:-}}"
 API_URL="${API_URL_OVERRIDE:-${ZCLAW_API_URL:-}}"
 TG_TOKEN="${TG_TOKEN_OVERRIDE:-${ZCLAW_TG_TOKEN:-}}"
 TG_CHAT_IDS="${TG_CHAT_IDS_OVERRIDE:-${ZCLAW_TG_CHAT_IDS:-${ZCLAW_TG_CHAT_ID:-}}}"
-EMAIL_BRIDGE_URL="${EMAIL_BRIDGE_URL_OVERRIDE:-${ZCLAW_EMAIL_BRIDGE_URL:-}}"
-EMAIL_BRIDGE_KEY="${EMAIL_BRIDGE_KEY_OVERRIDE:-${ZCLAW_EMAIL_BRIDGE_KEY:-}}"
+BRIDGE_URL="${BRIDGE_URL_OVERRIDE:-${ZCLAW_BRIDGE_URL:-}}"
+BRIDGE_KEY="${BRIDGE_KEY_OVERRIDE:-${ZCLAW_BRIDGE_KEY:-}}"
 
 if [ "$PASS_OVERRIDE_SET" = true ]; then
     WIFI_PASS="$PASS_OVERRIDE"
@@ -397,8 +397,8 @@ if [ "$SHOW_CONFIG" = true ]; then
     echo "  Telegram bot ID: $BOT_ID (safe identifier)"
     echo "  Telegram token: $(mask_secret "$TG_TOKEN")"
     echo "  Telegram chat ID(s): $(mask_chat_id "$TG_CHAT_IDS")"
-    echo "  Email bridge URL: ${EMAIL_BRIDGE_URL:-<unset>}"
-    echo "  Email bridge key: $(mask_secret "$EMAIL_BRIDGE_KEY")"
+    echo "  Bridge URL: ${BRIDGE_URL:-<unset>}"
+    echo "  Bridge key: $(mask_secret "$BRIDGE_KEY")"
 fi
 
 PROVISION_ARGS=(--yes)
@@ -427,11 +427,11 @@ fi
 if [ -n "$TG_CHAT_IDS" ]; then
     PROVISION_ARGS+=(--tg-chat-id "$TG_CHAT_IDS")
 fi
-if [ -n "$EMAIL_BRIDGE_URL" ]; then
-    PROVISION_ARGS+=(--email-bridge-url "$EMAIL_BRIDGE_URL")
+if [ -n "$BRIDGE_URL" ]; then
+    PROVISION_ARGS+=(--bridge-url "$BRIDGE_URL")
 fi
-if [ -n "$EMAIL_BRIDGE_KEY" ]; then
-    PROVISION_ARGS+=(--email-bridge-key "$EMAIL_BRIDGE_KEY")
+if [ -n "$BRIDGE_KEY" ]; then
+    PROVISION_ARGS+=(--bridge-key "$BRIDGE_KEY")
 fi
 if [ "$SKIP_API_CHECK" = true ]; then
     PROVISION_ARGS+=(--skip-api-check)

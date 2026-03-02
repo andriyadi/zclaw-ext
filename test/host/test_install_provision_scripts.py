@@ -911,9 +911,9 @@ LAST_PORT=
                     "openai",
                     "--api-key",
                     "sk-test",
-                    "--email-bridge-url",
+                    "--bridge-url",
                     "https://bridge.example.com",
-                    "--email-bridge-key",
+                    "--bridge-key",
                     "bridge-secret-token",
                 ],
                 cwd=PROJECT_ROOT,
@@ -926,8 +926,8 @@ LAST_PORT=
             output = f"{proc.stdout}\n{proc.stderr}"
             self.assertEqual(proc.returncode, 0, msg=output)
             captured_csv = (tmp / "captured-nvs.csv").read_text(encoding="utf-8")
-            self.assertIn('email_br_url,data,string,"https://bridge.example.com"', captured_csv)
-            self.assertIn('email_br_key,data,string,"bridge-secret-token"', captured_csv)
+            self.assertIn('bridge_url,data,string,"https://bridge.example.com"', captured_csv)
+            self.assertIn('bridge_key,data,string,"bridge-secret-token"', captured_csv)
 
     def test_provision_ollama_writes_normalized_api_url_without_api_key(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -1197,8 +1197,8 @@ LAST_PORT=
             self.assertIn("ZCLAW_WIFI_SSID", content)
             self.assertIn("ZCLAW_API_KEY", content)
             self.assertIn("ZCLAW_API_URL", content)
-            self.assertIn("ZCLAW_EMAIL_BRIDGE_URL", content)
-            self.assertIn("ZCLAW_EMAIL_BRIDGE_KEY", content)
+            self.assertIn("ZCLAW_BRIDGE_URL", content)
+            self.assertIn("ZCLAW_BRIDGE_KEY", content)
 
     def test_provision_dev_forwards_profile_values(self) -> None:
         with tempfile.TemporaryDirectory() as td:
@@ -1380,8 +1380,8 @@ LAST_PORT=
                         "ZCLAW_WIFI_SSID=Trident",
                         "ZCLAW_BACKEND=openai",
                         "ZCLAW_API_KEY=sk-test-1234567890",
-                        "ZCLAW_EMAIL_BRIDGE_URL=https://bridge.example.com",
-                        "ZCLAW_EMAIL_BRIDGE_KEY=bridge-secret-token",
+                        "ZCLAW_BRIDGE_URL=https://bridge.example.com",
+                        "ZCLAW_BRIDGE_KEY=bridge-secret-token",
                         "",
                     ]
                 ),
@@ -1409,11 +1409,11 @@ LAST_PORT=
             output = f"{proc.stdout}\n{proc.stderr}"
             self.assertEqual(proc.returncode, 0, msg=output)
             args_text = args_file.read_text(encoding="utf-8")
-            self.assertIn("--email-bridge-url", args_text)
+            self.assertIn("--bridge-url", args_text)
             self.assertIn("https://bridge.example.com", args_text)
-            self.assertIn("--email-bridge-key", args_text)
+            self.assertIn("--bridge-key", args_text)
             self.assertIn("bridge-secret-token", args_text)
-            self.assertIn("Email bridge URL: https://bridge.example.com", output)
+            self.assertIn("Bridge URL: https://bridge.example.com", output)
             self.assertNotIn("bridge-secret-token", output)
 
     def test_provision_dev_errors_when_key_missing(self) -> None:

@@ -1,4 +1,4 @@
-#include "email_bridge.h"
+#include "bridge_client.h"
 #include "memory.h"
 #include "nvs_keys.h"
 #include "text_buffer.h"
@@ -9,19 +9,19 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define EMAIL_BRIDGE_URL_MAX 256
-#define EMAIL_BRIDGE_KEY_MAX 128
-#define EMAIL_BRIDGE_ENDPOINT_MAX 320
-#define EMAIL_BRIDGE_HTTP_TIMEOUT_MS 15000
+#define BRIDGE_URL_MAX 256
+#define BRIDGE_KEY_MAX 128
+#define BRIDGE_ENDPOINT_MAX 320
+#define BRIDGE_HTTP_TIMEOUT_MS 15000
 
 typedef struct {
     char *buf;
     size_t len;
     size_t max;
     bool truncated;
-} email_bridge_http_ctx_t;
+} bridge_client_http_ctx_t;
 
-static const char *TAG = "email_bridge";
+static const char *TAG = "bridge_client";
 
 static void normalize_bridge_url(const char *raw, char *out, size_t out_len)
 {
@@ -46,12 +46,12 @@ static bool load_bridge_config(char *url_out,
                                char *key_out,
                                size_t key_out_len)
 {
-    char raw_url[EMAIL_BRIDGE_URL_MAX] = {0};
+    char raw_url[BRIDGE_URL_MAX] = {0};
 
-    if (!memory_get(NVS_KEY_EMAIL_BRIDGE_URL, raw_url, sizeof(raw_url)) || raw_url[0] == '\0') {
+    if (!memory_get(NVS_KEY_BRIDGE_URL, raw_url, sizeof(raw_url)) || raw_url[0] == '\0') {
         return false;
     }
-    if (!memory_get(NVS_KEY_EMAIL_BRIDGE_KEY, key_out, key_out_len) || key_out[0] == '\0') {
+    if (!memory_get(NVS_KEY_BRIDGE_KEY, key_out, key_out_len) || key_out[0] == '\0') {
         return false;
     }
 
@@ -59,9 +59,9 @@ static bool load_bridge_config(char *url_out,
     return url_out[0] != '\0';
 }
 
-static esp_err_t email_bridge_http_event_handler(esp_http_client_event_t *evt)
+static esp_err_t bridge_client_http_event_handler(esp_http_client_event_t *evt)
 {
-    email_bridge_http_ctx_t *ctx = (email_bridge_http_ctx_t *)evt->user_data;
+    bridge_client_http_ctx_t *ctx = (bridge_client_http_ctx_t *)evt->user_data;
 
     if (!ctx) {
         return ESP_OK;
@@ -78,30 +78,30 @@ static esp_err_t email_bridge_http_event_handler(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
-bool email_bridge_is_configured(void)
+bool bridge_client_is_configured(void)
 {
-    char url[EMAIL_BRIDGE_URL_MAX] = {0};
-    char key[EMAIL_BRIDGE_KEY_MAX] = {0};
+    char url[BRIDGE_URL_MAX] = {0};
+    char key[BRIDGE_KEY_MAX] = {0};
     return load_bridge_config(url, sizeof(url), key, sizeof(key));
 }
 
-esp_err_t email_bridge_post_json(const char *path,
+esp_err_t bridge_client_post_json(const char *path,
                                  const cJSON *payload,
                                  char *response_out,
                                  size_t response_out_len,
                                  int *status_out,
                                  bool *truncated_out)
 {
-    char bridge_url[EMAIL_BRIDGE_URL_MAX] = {0};
-    char bridge_key[EMAIL_BRIDGE_KEY_MAX] = {0};
-    char auth_header[EMAIL_BRIDGE_KEY_MAX + 16] = {0};
-    char endpoint[EMAIL_BRIDGE_ENDPOINT_MAX] = {0};
+    char bridge_url[BRIDGE_URL_MAX] = {0};
+    char bridge_key[BRIDGE_KEY_MAX] = {0};
+    char auth_header[BRIDGE_KEY_MAX + 16] = {0};
+    char endpoint[BRIDGE_ENDPOINT_MAX] = {0};
     char *payload_json = NULL;
     const char *payload_body = "{}";
     esp_http_client_handle_t client = NULL;
     int status = -1;
     esp_err_t err;
-    email_bridge_http_ctx_t ctx = {
+    bridge_client_http_ctx_t ctx = {
         .buf = response_out,
         .len = 0,
         .max = response_out_len,
@@ -144,9 +144,9 @@ esp_err_t email_bridge_post_json(const char *path,
 
     esp_http_client_config_t cfg = {
         .url = endpoint,
-        .event_handler = email_bridge_http_event_handler,
+        .event_handler = bridge_client_http_event_handler,
         .user_data = &ctx,
-        .timeout_ms = EMAIL_BRIDGE_HTTP_TIMEOUT_MS,
+        .timeout_ms = BRIDGE_HTTP_TIMEOUT_MS,
         .crt_bundle_attach = esp_crt_bundle_attach,
     };
 

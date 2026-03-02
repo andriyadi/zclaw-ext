@@ -110,7 +110,7 @@ bash &lt;(curl -fsSL https://raw.githubusercontent.com/tnm/zclaw/main/scripts/bo
             <li><strong>anthropic</strong>, <strong>openai</strong>, <strong>openrouter</strong>: require <code>--api-key</code>.</li>
             <li><strong>ollama</strong>: requires <code>--api-url</code>; API key is optional.</li>
             <li>Use <code>--model</code> to override defaults on any backend.</li>
-            <li>Optional email tools require bridge credentials: <code>--email-bridge-url</code> and <code>--email-bridge-key</code>.</li>
+            <li>Optional email tools require bridge credentials: <code>--bridge-url</code> and <code>--bridge-key</code>.</li>
           </ul>
           <pre># OpenAI
 ./scripts/provision.sh --port /dev/cu.usbmodem1101 --backend openai --model gpt-5.2 --api-key sk-...
@@ -122,7 +122,7 @@ bash &lt;(curl -fsSL https://raw.githubusercontent.com/tnm/zclaw/main/scripts/bo
 ./scripts/provision.sh --port /dev/cu.usbmodem1101 --backend ollama --model qwen3:8b --api-url http://192.168.1.50:11434</pre>
           <pre># Optional: enable bridge-backed email tools
 ./scripts/provision.sh --port /dev/cu.usbmodem1101 --backend openai --api-key sk-... \
-  --email-bridge-url https://bridge.example.com --email-bridge-key bridge-token</pre>
+  --bridge-url https://bridge.example.com --bridge-key bridge-token</pre>
           <p class="inline-note">For Ollama, use a LAN-reachable host/IP; <code>127.0.0.1</code> points to the ESP32 itself and will not reach your laptop/server.</p>
           <p class="inline-note">To switch model/provider later, re-run provisioning with new <code>--backend</code>/<code>--model</code> values, or update <code>ZCLAW_BACKEND</code>/<code>ZCLAW_MODEL</code> in <code>provision-dev.sh</code> profile and re-run.</p>
         </section>

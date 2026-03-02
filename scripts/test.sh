@@ -70,7 +70,7 @@ run_host_tests() {
         mock_user_tools.c \
         mock_freertos.c \
         mock_tools.c \
-        mock_email_bridge.c \
+        mock_bridge_client.c \
         mock_tools_common.c \
         mock_ratelimit.c \
         ../../main/json_util.c \

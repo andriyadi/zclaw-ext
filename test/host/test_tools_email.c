@@ -7,7 +7,7 @@
 
 #include <cjson/cJSON.h>
 
-#include "mock_email_bridge.h"
+#include "mock_bridge_client.h"
 #include "tools_handlers.h"
 
 #define TEST(name) static int test_##name(void)
@@ -32,13 +32,13 @@
 
 static void test_setup(void)
 {
-    mock_email_bridge_reset();
-    mock_email_bridge_set_configured(true);
+    mock_bridge_client_reset();
+    mock_bridge_client_set_configured(true);
 }
 
 static cJSON *parse_last_payload(void)
 {
-    const char *payload = mock_email_bridge_last_payload();
+    const char *payload = mock_bridge_client_last_payload();
     if (!payload || payload[0] == '\0') {
         return NULL;
     }
@@ -60,11 +60,11 @@ TEST(send_rejects_unconfigured_bridge)
     char result[512] = {0};
 
     test_setup();
-    mock_email_bridge_set_configured(false);
+    mock_bridge_client_set_configured(false);
     ASSERT(input != NULL);
     ASSERT(!tools_email_send_handler(input, result, sizeof(result)));
     ASSERT_STR_CONTAINS(result, "email bridge is not configured");
-    ASSERT(mock_email_bridge_post_calls() == 0);
+    ASSERT(mock_bridge_client_post_calls() == 0);
 
     cJSON_Delete(input);
     return 0;
@@ -108,12 +108,12 @@ TEST(send_forwards_payload_and_uses_summary)
     char result[512] = {0};
 
     test_setup();
-    mock_email_bridge_set_response(ESP_OK, 202, false, "{\"summary\":\"queued\"}");
+    mock_bridge_client_set_response(ESP_OK, 202, false, "{\"summary\":\"queued\"}");
     ASSERT(input != NULL);
     ASSERT(tools_email_send_handler(input, result, sizeof(result)));
     ASSERT_STR_EQ(result, "queued");
-    ASSERT_STR_EQ(mock_email_bridge_last_path(), "/v1/email/send");
-    ASSERT(mock_email_bridge_post_calls() == 1);
+    ASSERT_STR_EQ(mock_bridge_client_last_path(), "/v1/email/send");
+    ASSERT(mock_bridge_client_post_calls() == 1);
 
     payload = parse_last_payload();
     ASSERT(payload != NULL);
@@ -135,7 +135,7 @@ TEST(send_uses_message_when_summary_missing)
     char result[512] = {0};
 
     test_setup();
-    mock_email_bridge_set_response(ESP_OK, 200, false, "{\"message\":\"accepted\"}");
+    mock_bridge_client_set_response(ESP_OK, 200, false, "{\"message\":\"accepted\"}");
     ASSERT(input != NULL);
     ASSERT(tools_email_send_handler(input, result, sizeof(result)));
     ASSERT_STR_EQ(result, "accepted");
@@ -150,7 +150,7 @@ TEST(send_uses_default_when_json_has_no_summary_or_message)
     char result[512] = {0};
 
     test_setup();
-    mock_email_bridge_set_response(ESP_OK, 200, false, "{\"ok\":true}");
+    mock_bridge_client_set_response(ESP_OK, 200, false, "{\"ok\":true}");
     ASSERT(input != NULL);
     ASSERT(tools_email_send_handler(input, result, sizeof(result)));
     ASSERT_STR_EQ(result, "Email send request accepted.");
@@ -165,7 +165,7 @@ TEST(send_uses_first_line_for_non_json_response)
     char result[512] = {0};
 
     test_setup();
-    mock_email_bridge_set_response(ESP_OK, 200, false, "queued on provider\ntrace-id:123");
+    mock_bridge_client_set_response(ESP_OK, 200, false, "queued on provider\ntrace-id:123");
     ASSERT(input != NULL);
     ASSERT(tools_email_send_handler(input, result, sizeof(result)));
     ASSERT_STR_EQ(result, "queued on provider");
@@ -180,7 +180,7 @@ TEST(send_reports_bridge_error_with_status_and_detail)
     char result[512] = {0};
 
     test_setup();
-    mock_email_bridge_set_response(ESP_FAIL, 500, false, "upstream timeout\ntrace");
+    mock_bridge_client_set_response(ESP_FAIL, 500, false, "upstream timeout\ntrace");
     ASSERT(input != NULL);
     ASSERT(!tools_email_send_handler(input, result, sizeof(result)));
     ASSERT_STR_CONTAINS(result, "email_send failed");
@@ -198,7 +198,7 @@ TEST(send_reports_truncated_bridge_response)
     char result[512] = {0};
 
     test_setup();
-    mock_email_bridge_set_response(ESP_FAIL, 502, true, "ignored");
+    mock_bridge_client_set_response(ESP_FAIL, 502, true, "ignored");
     ASSERT(input != NULL);
     ASSERT(!tools_email_send_handler(input, result, sizeof(result)));
     ASSERT_STR_CONTAINS(result, "response exceeded buffer limits");
@@ -215,11 +215,11 @@ TEST(list_defaults_when_input_is_null)
     char result[512] = {0};
 
     test_setup();
-    mock_email_bridge_set_response(ESP_OK, 200, false, "{\"summary\":\"3 inbox emails\"}");
+    mock_bridge_client_set_response(ESP_OK, 200, false, "{\"summary\":\"3 inbox emails\"}");
     ASSERT(tools_email_list_handler(NULL, result, sizeof(result)));
     ASSERT_STR_EQ(result, "3 inbox emails");
-    ASSERT_STR_EQ(mock_email_bridge_last_path(), "/v1/email/list");
-    ASSERT(mock_email_bridge_post_calls() == 1);
+    ASSERT_STR_EQ(mock_bridge_client_last_path(), "/v1/email/list");
+    ASSERT(mock_bridge_client_post_calls() == 1);
 
     payload = parse_last_payload();
     ASSERT(payload != NULL);
@@ -316,11 +316,11 @@ TEST(list_forwards_optional_fields)
     char result[512] = {0};
 
     test_setup();
-    mock_email_bridge_set_response(ESP_OK, 200, false, "{\"summary\":\"ok\"}");
+    mock_bridge_client_set_response(ESP_OK, 200, false, "{\"summary\":\"ok\"}");
     ASSERT(input != NULL);
     ASSERT(tools_email_list_handler(input, result, sizeof(result)));
     ASSERT_STR_EQ(result, "ok");
-    ASSERT_STR_EQ(mock_email_bridge_last_path(), "/v1/email/list");
+    ASSERT_STR_EQ(mock_bridge_client_last_path(), "/v1/email/list");
 
     payload = parse_last_payload();
     ASSERT(payload != NULL);
@@ -343,7 +343,7 @@ TEST(list_renders_items_and_limits_to_five_lines)
 
     test_setup();
     ASSERT(input != NULL);
-    mock_email_bridge_set_response(
+    mock_bridge_client_set_response(
         ESP_OK,
         200,
         false,
@@ -373,7 +373,7 @@ TEST(list_reports_no_emails_for_empty_items)
 
     test_setup();
     ASSERT(input != NULL);
-    mock_email_bridge_set_response(ESP_OK, 200, false, "{\"items\":[]}");
+    mock_bridge_client_set_response(ESP_OK, 200, false, "{\"items\":[]}");
     ASSERT(tools_email_list_handler(input, result, sizeof(result)));
     ASSERT_STR_EQ(result, "No emails found.");
 
@@ -388,7 +388,7 @@ TEST(list_uses_first_line_for_non_json_response)
 
     test_setup();
     ASSERT(input != NULL);
-    mock_email_bridge_set_response(ESP_OK, 200, false, "list complete\ntrace");
+    mock_bridge_client_set_response(ESP_OK, 200, false, "list complete\ntrace");
     ASSERT(tools_email_list_handler(input, result, sizeof(result)));
     ASSERT_STR_EQ(result, "list complete");
 
@@ -403,7 +403,7 @@ TEST(list_reports_bridge_error)
 
     test_setup();
     ASSERT(input != NULL);
-    mock_email_bridge_set_response(ESP_FAIL, 503, false, "bridge down");
+    mock_bridge_client_set_response(ESP_FAIL, 503, false, "bridge down");
     ASSERT(!tools_email_list_handler(input, result, sizeof(result)));
     ASSERT_STR_CONTAINS(result, "email_list failed");
     ASSERT_STR_CONTAINS(result, "status=503");
@@ -420,7 +420,7 @@ TEST(list_reports_truncated_bridge_response)
 
     test_setup();
     ASSERT(input != NULL);
-    mock_email_bridge_set_response(ESP_FAIL, 500, true, "ignored");
+    mock_bridge_client_set_response(ESP_FAIL, 500, true, "ignored");
     ASSERT(!tools_email_list_handler(input, result, sizeof(result)));
     ASSERT_STR_CONTAINS(result, "response exceeded buffer limits");
 
@@ -479,7 +479,7 @@ TEST(read_forwards_payload_and_formats_email_view)
     char result[1024] = {0};
 
     test_setup();
-    mock_email_bridge_set_response(
+    mock_bridge_client_set_response(
         ESP_OK,
         200,
         false,
@@ -490,7 +490,7 @@ TEST(read_forwards_payload_and_formats_email_view)
     ASSERT_STR_CONTAINS(result, "From: sender@example.com");
     ASSERT_STR_CONTAINS(result, "Subject: Test");
     ASSERT_STR_CONTAINS(result, "Body: Hello world");
-    ASSERT_STR_EQ(mock_email_bridge_last_path(), "/v1/email/read");
+    ASSERT_STR_EQ(mock_bridge_client_last_path(), "/v1/email/read");
 
     payload = parse_last_payload();
     ASSERT(payload != NULL);
@@ -510,7 +510,7 @@ TEST(read_uses_summary_when_present)
     char result[512] = {0};
 
     test_setup();
-    mock_email_bridge_set_response(ESP_OK, 200, false, "{\"summary\":\"message unavailable\"}");
+    mock_bridge_client_set_response(ESP_OK, 200, false, "{\"summary\":\"message unavailable\"}");
     ASSERT(input != NULL);
     ASSERT(tools_email_read_handler(input, result, sizeof(result)));
     ASSERT_STR_EQ(result, "message unavailable");
@@ -532,7 +532,7 @@ TEST(read_truncates_long_body_preview)
              long_body);
 
     test_setup();
-    mock_email_bridge_set_response(ESP_OK, 200, false, response);
+    mock_bridge_client_set_response(ESP_OK, 200, false, response);
     ASSERT(input != NULL);
     ASSERT(tools_email_read_handler(input, result, sizeof(result)));
     ASSERT_STR_CONTAINS(result, "Email msg-2");
@@ -549,7 +549,7 @@ TEST(read_uses_first_line_for_non_json_response)
     char result[512] = {0};
 
     test_setup();
-    mock_email_bridge_set_response(ESP_OK, 200, false, "read complete\ntrace");
+    mock_bridge_client_set_response(ESP_OK, 200, false, "read complete\ntrace");
     ASSERT(input != NULL);
     ASSERT(tools_email_read_handler(input, result, sizeof(result)));
     ASSERT_STR_EQ(result, "read complete");
@@ -564,7 +564,7 @@ TEST(read_reports_bridge_error)
     char result[512] = {0};
 
     test_setup();
-    mock_email_bridge_set_response(ESP_FAIL, 404, false, "not found");
+    mock_bridge_client_set_response(ESP_FAIL, 404, false, "not found");
     ASSERT(input != NULL);
     ASSERT(!tools_email_read_handler(input, result, sizeof(result)));
     ASSERT_STR_CONTAINS(result, "email_read failed");
@@ -581,7 +581,7 @@ TEST(read_reports_truncated_bridge_response)
     char result[512] = {0};
 
     test_setup();
-    mock_email_bridge_set_response(ESP_FAIL, 502, true, "ignored");
+    mock_bridge_client_set_response(ESP_FAIL, 502, true, "ignored");
     ASSERT(input != NULL);
     ASSERT(!tools_email_read_handler(input, result, sizeof(result)));
     ASSERT_STR_CONTAINS(result, "response exceeded buffer limits");

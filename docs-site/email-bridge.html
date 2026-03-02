@@ -85,7 +85,7 @@
             <li><code>POST /v1/email/list</code></li>
             <li><code>POST /v1/email/read</code></li>
           </ul>
-          <p>Request auth header: <code>Authorization: Bearer &lt;email_bridge_key&gt;</code> (bridge may also accept <code>X-Zclaw-Bridge-Key</code>).</p>
+          <p>Request auth header: <code>Authorization: Bearer &lt;bridge_key&gt;</code> (bridge may also accept <code>X-Zclaw-Bridge-Key</code>).</p>
           <p class="inline-note">Bridge should return concise JSON (for example <code>summary</code> or <code>items</code> fields) for best model usability.</p>
         </section>
 
@@ -96,12 +96,12 @@
   --port /dev/cu.usbmodem1101 \
   --ssid "HomeWiFi" --pass "wifi-password" \
   --backend openai --api-key "sk-..." \
-  --email-bridge-url "https://bridge.example.com" \
-  --email-bridge-key "bridge-secret-token"</pre>
+  --bridge-url "https://bridge.example.com" \
+  --bridge-key "bridge-secret-token"</pre>
 
           <pre># local dev profile values (~/.config/zclaw/dev.env)
-ZCLAW_EMAIL_BRIDGE_URL=https://bridge.example.com
-ZCLAW_EMAIL_BRIDGE_KEY=bridge-secret-token
+ZCLAW_BRIDGE_URL=https://bridge.example.com
+ZCLAW_BRIDGE_KEY=bridge-secret-token
 
 ./scripts/provision-dev.sh --show-config
 ./scripts/provision-dev.sh</pre>
