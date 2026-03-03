@@ -242,6 +242,18 @@ cd ~/esp/esp-idf
 ./scripts/test.sh host</pre>
         </section>
 
+        <section class="section">
+          <h2>WiFi Troubleshooting (Breadboards)</h2>
+          <p>In some setups, a breadboard can reduce ESP32 2.4GHz WiFi reliability (especially when jumper wires or rails sit near the antenna end of the board).</p>
+          <ul>
+            <li>Keep the antenna end clear: do not run jumpers directly over/along that edge.</li>
+            <li>Use short power/signal leads and avoid large wire loops around the board.</li>
+            <li>If connection is flaky during provisioning or soak tests, run the board off the breadboard temporarily.</li>
+            <li>Increase spacing from noisy USB hubs/cables (a short USB extension often helps).</li>
+          </ul>
+          <p class="inline-note">Symptoms can look like random auth/connect retries even with correct SSID/password.</p>
+        </section>
+
         <footer class="footer">
           <p>Next chapter: <a href="tools.html">tool surface and schedule grammar</a>.</p>
         </footer>
