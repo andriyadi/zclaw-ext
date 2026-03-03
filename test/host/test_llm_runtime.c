@@ -94,6 +94,18 @@ TEST(stub_request_returns_response)
     return 0;
 }
 
+TEST(rejects_invalid_request_args)
+{
+    char response[LLM_RESPONSE_BUF_SIZE] = {0};
+
+    configure_mock_store("openai", "gpt-5.2", "test-key", NULL);
+    ASSERT(llm_init() == ESP_OK);
+    ASSERT(llm_request(NULL, response, sizeof(response)) == ESP_ERR_INVALID_ARG);
+    ASSERT(llm_request("{}", NULL, sizeof(response)) == ESP_ERR_INVALID_ARG);
+    ASSERT(llm_request("{}", response, 0) == ESP_ERR_INVALID_ARG);
+    return 0;
+}
+
 TEST(loads_ollama_backend_with_default_model)
 {
     configure_mock_store("ollama", NULL, NULL, NULL);
@@ -161,6 +173,13 @@ int test_llm_runtime_all(void)
 
     printf("  stub_request_returns_response... ");
     if (test_stub_request_returns_response() == 0) {
+        printf("OK\n");
+    } else {
+        failures++;
+    }
+
+    printf("  rejects_invalid_request_args... ");
+    if (test_rejects_invalid_request_args() == 0) {
         printf("OK\n");
     } else {
         failures++;

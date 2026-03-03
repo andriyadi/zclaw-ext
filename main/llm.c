@@ -618,6 +618,13 @@ static const char *get_stub_response(const char *request_json)
 
 esp_err_t llm_request(const char *request_json, char *response_buf, size_t response_buf_size)
 {
+    if (!request_json || !response_buf || response_buf_size == 0) {
+        ESP_LOGE(TAG, "Invalid llm_request arguments");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    response_buf[0] = '\0';
+
 #if CONFIG_ZCLAW_EMULATOR_LIVE_LLM
     // In emulator bridge mode, delegate HTTPS API calls to a host-side proxy.
     esp_err_t bridge_err = channel_llm_bridge_exchange(request_json, response_buf, response_buf_size,
@@ -657,7 +664,6 @@ esp_err_t llm_request(const char *request_json, char *response_buf, size_t respo
         .max = response_buf_size,
         .truncated = false
     };
-    response_buf[0] = '\0';
 
     esp_http_client_config_t config = {
         .url = llm_get_api_url(),

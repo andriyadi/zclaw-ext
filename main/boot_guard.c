@@ -2,8 +2,31 @@
 #include "memory.h"
 #include "nvs_keys.h"
 
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+static int parse_boot_count_or_zero(const char *buf)
+{
+    char *endptr = NULL;
+    long parsed;
+
+    if (!buf || buf[0] == '\0') {
+        return 0;
+    }
+
+    errno = 0;
+    parsed = strtol(buf, &endptr, 10);
+    if (errno != 0 || !endptr || endptr == buf || *endptr != '\0') {
+        return 0;
+    }
+    if (parsed < 0 || parsed > INT_MAX) {
+        return 0;
+    }
+
+    return (int)parsed;
+}
 
 int boot_guard_next_count(int current_count)
 {
@@ -25,7 +48,7 @@ int boot_guard_get_persisted_count(void)
 {
     char buf[16] = {0};
     if (memory_get(NVS_KEY_BOOT_COUNT, buf, sizeof(buf))) {
-        return atoi(buf);
+        return parse_boot_count_or_zero(buf);
     }
     return 0;
 }

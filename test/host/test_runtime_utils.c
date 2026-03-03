@@ -11,6 +11,7 @@
 #include "security.h"
 #include "text_buffer.h"
 #include "boot_guard.h"
+#include "nvs_keys.h"
 #include "mock_memory.h"
 
 #define TEST(name) static int test_##name(void)
@@ -111,6 +112,24 @@ TEST(boot_guard_persistence)
     return 0;
 }
 
+TEST(boot_guard_invalid_persisted_value_falls_back_to_zero)
+{
+    mock_memory_reset();
+
+    mock_memory_set_kv(NVS_KEY_BOOT_COUNT, "not-a-number");
+    ASSERT(boot_guard_get_persisted_count() == 0);
+
+    mock_memory_set_kv(NVS_KEY_BOOT_COUNT, "-5");
+    ASSERT(boot_guard_get_persisted_count() == 0);
+
+    mock_memory_set_kv(NVS_KEY_BOOT_COUNT, "999999999999999999999");
+    ASSERT(boot_guard_get_persisted_count() == 0);
+
+    mock_memory_set_kv(NVS_KEY_BOOT_COUNT, "12");
+    ASSERT(boot_guard_get_persisted_count() == 12);
+    return 0;
+}
+
 TEST(boot_ok_task_stack_config)
 {
     ASSERT(BOOT_OK_TASK_STACK_SIZE >= 4096);
@@ -167,6 +186,13 @@ int test_runtime_utils_all(void)
 
     printf("  boot_guard_persistence... ");
     if (test_boot_guard_persistence() == 0) {
+        printf("OK\n");
+    } else {
+        failures++;
+    }
+
+    printf("  boot_guard_invalid_persisted_value_falls_back_to_zero... ");
+    if (test_boot_guard_invalid_persisted_value_falls_back_to_zero() == 0) {
         printf("OK\n");
     } else {
         failures++;

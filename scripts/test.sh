@@ -120,6 +120,24 @@ run_host_tests() {
 
     ./build/test_llm_runtime_runner
 
+    # Compile and run real ratelimit.c runtime tests to verify persistence
+    # error handling around NVS writes.
+    gcc -o build/test_ratelimit_runner $SANITIZE_FLAGS \
+        -std=c99 \
+        $WARNING_FLAGS \
+        -I../../main \
+        -I. \
+        -DTEST_BUILD \
+        test_ratelimit.c \
+        test_ratelimit_runner.c \
+        mock_memory.c \
+        ../../main/ratelimit.c || {
+        echo "Note: Failed to compile ratelimit runtime tests."
+        return 1
+    }
+
+    ./build/test_ratelimit_runner
+
     echo "=== Running host bridge Python tests ==="
     python3 -m unittest -q \
         test_qemu_live_llm_bridge.py \

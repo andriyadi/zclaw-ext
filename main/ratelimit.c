@@ -3,6 +3,7 @@
 #include "memory.h"
 #include "nvs_keys.h"
 #include "esp_log.h"
+#include "esp_err.h"
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
@@ -17,6 +18,16 @@ static int s_requests_today = 0;
 static int s_last_hour = -1;
 static int s_last_day = -1;
 static int s_last_year = -1;
+static int s_persist_failure_count = 0;
+
+static void persist_rate_limit_value(const char *key, const char *value)
+{
+    esp_err_t err = memory_set(key, value);
+    if (err != ESP_OK) {
+        s_persist_failure_count++;
+        ESP_LOGW(TAG, "Failed to persist %s: %s", key, esp_err_to_name(err));
+    }
+}
 
 static int parse_int_or_default(const char *value, int fallback)
 {
@@ -41,6 +52,8 @@ static int parse_int_or_default(const char *value, int fallback)
 
 void ratelimit_init(void)
 {
+    s_persist_failure_count = 0;
+
     // Load persisted daily count
     char buf[16];
     if (memory_get(NVS_KEY_RL_DAILY, buf, sizeof(buf))) {
@@ -82,10 +95,10 @@ static void update_time_window(void)
         // Persist the new day/year and reset count.
         char buf[16];
         snprintf(buf, sizeof(buf), "%d", current_day);
-        memory_set(NVS_KEY_RL_DAY, buf);
+        persist_rate_limit_value(NVS_KEY_RL_DAY, buf);
         snprintf(buf, sizeof(buf), "%d", current_year);
-        memory_set(NVS_KEY_RL_YEAR, buf);
-        memory_set(NVS_KEY_RL_DAILY, "0");
+        persist_rate_limit_value(NVS_KEY_RL_YEAR, buf);
+        persist_rate_limit_value(NVS_KEY_RL_DAILY, "0");
 
         ESP_LOGI(TAG, "Daily rate limit reset");
     }
@@ -130,7 +143,7 @@ void ratelimit_record_request(void)
     // Persist daily count periodically
     char buf[16];
     snprintf(buf, sizeof(buf), "%d", s_requests_today);
-    memory_set(NVS_KEY_RL_DAILY, buf);
+    persist_rate_limit_value(NVS_KEY_RL_DAILY, buf);
 
     ESP_LOGD(TAG, "Request recorded: %d/hour, %d/day",
              s_requests_this_hour, s_requests_today);
@@ -150,6 +163,13 @@ void ratelimit_reset_daily(void)
 {
     s_requests_today = 0;
     s_requests_this_hour = 0;
-    memory_set(NVS_KEY_RL_DAILY, "0");
+    persist_rate_limit_value(NVS_KEY_RL_DAILY, "0");
     ESP_LOGI(TAG, "Rate limits manually reset");
 }
+
+#ifdef TEST_BUILD
+int ratelimit_test_get_persist_failure_count(void)
+{
+    return s_persist_failure_count;
+}
+#endif
