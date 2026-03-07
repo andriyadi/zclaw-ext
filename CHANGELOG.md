@@ -8,6 +8,19 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 - No unreleased changes yet.
 
+## [2.11.1] - 2026-03-07
+
+### Fixed
+- Serialized Telegram and LLM HTTPS usage on classic `esp32` targets to reduce TLS/memory contention that could cause OpenAI-backed turns to fail before or between tool rounds.
+- Agent turns now pause new Telegram long-polls while an LLM/tool exchange is active, preventing `getUpdates` from preempting follow-up model requests mid-turn.
+
+### Docs
+- Updated README and docs-site support matrix copy to explicitly list classic `ESP32`, `ESP32-WROOM`, and `ESP32 DevKit` support.
+
+### Tests
+- Added host coverage for Telegram poll pause/resume behavior around successful and failed LLM turns.
+- Added host coverage for classic ESP32 Telegram poll-timeout selection.
+
 ## [2.11.0] - 2026-03-07
 
 ### Fixed
