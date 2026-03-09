@@ -8,6 +8,21 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 - No unreleased changes yet.
 
+## [2.12.0] - 2026-03-09
+
+### Added
+- Added a USB-local admin console with `/gpio`, `/diag`, `/wifi status`, `/wifi scan`, `/bootcount`, `/reboot`, and guarded `/factory-reset confirm` commands for recovery, safe mode, and pre-network bring-up.
+
+### Changed
+- Routed local admin commands ahead of the LLM path and restricted them to USB-local callers instead of allowing Telegram or web relay traffic to invoke them.
+- Shared factory-reset behavior across the physical reset-button path and the new local admin console command path.
+
+### Docs
+- Added a dedicated Local Admin Console chapter to the docs site and updated README/getting-started/tool-reference docs for the new recovery/admin workflow.
+
+### Tests
+- Added host coverage for local admin command dispatch, local-only rejection for remote callers, and reboot/factory-reset command behavior.
+
 ## [2.11.2] - 2026-03-07
 
 ### Changed
