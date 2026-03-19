@@ -12,6 +12,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ### Fixed
 - Added a first-class `esp32-t-relay` board preset across build, flash, and secure-flash flows so LilyGO TTGO T-Relay users can target the board's relay GPIOs (`5`, `18`, `19`, `21`) without getting stuck behind the generic `GPIO 2-10` starter policy.
+- Aligned ESP-IDF app metadata/version reporting with the checked-in `VERSION` file so firmware builds now advertise `2.12.1` instead of falling back to `git describe`.
 
 ### Docs
 - Clarified that stock classic `esp32` builds keep a deliberately conservative GPIO starter range and, with flash-pin blocking applied, effectively expose only `GPIO 2-5` until the GPIO policy is changed or a board preset is used.
