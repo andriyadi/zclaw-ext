@@ -9,12 +9,14 @@
 #include "wifi_credentials.h"
 
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 
 #ifndef TEST_BUILD
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
+#include "freertos/timers.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_netif.h"
@@ -29,18 +31,70 @@ static const char *TAG = "local_admin";
 static bool s_safe_mode = false;
 static bool s_device_configured = false;
 
+static uint32_t runtime_wifi_retry_delay_ms(unsigned int attempt)
+{
+    uint32_t delay = WIFI_RUNTIME_RETRY_BASE_MS;
+    unsigned int i;
+
+    if (attempt <= 1) {
+        return delay;
+    }
+
+    for (i = 1; i < attempt; i++) {
+        if (delay >= WIFI_RUNTIME_RETRY_MAX_MS) {
+            return WIFI_RUNTIME_RETRY_MAX_MS;
+        }
+        if (delay > (WIFI_RUNTIME_RETRY_MAX_MS / 2U)) {
+            delay = WIFI_RUNTIME_RETRY_MAX_MS;
+        } else {
+            delay *= 2U;
+        }
+    }
+
+    return delay > WIFI_RUNTIME_RETRY_MAX_MS ? WIFI_RUNTIME_RETRY_MAX_MS : delay;
+}
+
+static bool runtime_wifi_reboot_budget_exhausted(unsigned int next_attempt,
+                                                 uint32_t outage_ms)
+{
+    if (WIFI_RUNTIME_MAX_ATTEMPTS > 0 && next_attempt > WIFI_RUNTIME_MAX_ATTEMPTS) {
+        return true;
+    }
+
+    if (WIFI_RUNTIME_REBOOT_AFTER_MS > 0 && outage_ms >= WIFI_RUNTIME_REBOOT_AFTER_MS) {
+        return true;
+    }
+
+    return false;
+}
+
+static esp_err_t runtime_wifi_refund_boot_count(void)
+{
+    int current_count = boot_guard_get_persisted_count();
+    int refunded_count = current_count > 0 ? current_count - 1 : 0;
+
+    return boot_guard_set_persisted_count(refunded_count);
+}
+
 #ifndef TEST_BUILD
 static EventGroupHandle_t s_wifi_event_group = NULL;
+static TimerHandle_t s_wifi_runtime_retry_timer = NULL;
 static bool s_wifi_stack_ready = false;
 static bool s_wifi_netif_ready = false;
 static bool s_wifi_handlers_registered = false;
 static bool s_wifi_started = false;
 static bool s_wifi_connected = false;
 static bool s_wifi_connect_in_progress = false;
+static bool s_wifi_runtime_reconnect_active = false;
+static bool s_wifi_runtime_reconnect_pending = false;
+static bool s_wifi_had_ip = false;
 static int s_wifi_retry_num = 0;
+static unsigned int s_wifi_runtime_retry_count = 0;
+static uint32_t s_wifi_runtime_last_delay_ms = 0;
 static uint8_t s_last_disconnect_reason = 0;
 static char s_target_ssid[64] = {0};
 static char s_current_ip[16] = {0};
+static TickType_t s_wifi_runtime_outage_started_ticks = 0;
 
 #define LOCAL_ADMIN_WIFI_CONNECTED_BIT BIT0
 #define LOCAL_ADMIN_WIFI_FAIL_BIT      BIT1
@@ -116,6 +170,153 @@ static const char *wifi_authmode_name(wifi_auth_mode_t mode)
     }
 }
 
+static uint32_t runtime_wifi_outage_elapsed_ms(void)
+{
+    TickType_t now_ticks;
+
+    if (!s_wifi_runtime_reconnect_active) {
+        return 0;
+    }
+
+    now_ticks = xTaskGetTickCount();
+    if (now_ticks < s_wifi_runtime_outage_started_ticks) {
+        return 0;
+    }
+
+    return (uint32_t)((now_ticks - s_wifi_runtime_outage_started_ticks) * portTICK_PERIOD_MS);
+}
+
+static const char *wifi_link_state_name(void)
+{
+    if (s_wifi_connected) {
+        return "connected";
+    }
+    if (s_wifi_connect_in_progress) {
+        return "connecting";
+    }
+    if (s_wifi_runtime_reconnect_active) {
+        return "reconnecting";
+    }
+    return "idle";
+}
+
+static void clear_runtime_wifi_reconnect_state(void)
+{
+    s_wifi_runtime_reconnect_active = false;
+    s_wifi_runtime_reconnect_pending = false;
+    s_wifi_runtime_retry_count = 0;
+    s_wifi_runtime_last_delay_ms = 0;
+    s_wifi_runtime_outage_started_ticks = 0;
+
+    if (s_wifi_runtime_retry_timer) {
+        (void)xTimerStop(s_wifi_runtime_retry_timer, 0);
+    }
+}
+
+static void runtime_wifi_reboot_now(const char *reason)
+{
+    esp_err_t refund_err;
+    uint32_t outage_ms = runtime_wifi_outage_elapsed_ms();
+
+    ESP_LOGE(TAG,
+             "Runtime WiFi recovery exhausted: reason=%s attempts=%u outage_ms=%lu last_reason=%s; rebooting",
+             reason ? reason : "unknown",
+             (unsigned)s_wifi_runtime_retry_count,
+             (unsigned long)outage_ms,
+             s_last_disconnect_reason ? wifi_disconnect_reason_name(s_last_disconnect_reason) : "none");
+
+    refund_err = runtime_wifi_refund_boot_count();
+    if (refund_err != ESP_OK) {
+        ESP_LOGW(TAG,
+                 "Failed to refund boot counter before runtime WiFi recovery reboot: %s",
+                 esp_err_to_name(refund_err));
+    } else {
+        ESP_LOGI(TAG, "Boot counter refunded by one before runtime WiFi recovery reboot");
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(250));
+    esp_restart();
+}
+
+static void schedule_runtime_wifi_reconnect(void)
+{
+    unsigned int next_attempt;
+    uint32_t delay_ms;
+    uint32_t outage_ms;
+    TickType_t delay_ticks;
+
+    if (!s_wifi_started || s_wifi_connect_in_progress || s_wifi_connected || !s_wifi_had_ip) {
+        return;
+    }
+
+    if (!s_wifi_runtime_reconnect_active) {
+        s_wifi_runtime_reconnect_active = true;
+        s_wifi_runtime_outage_started_ticks = xTaskGetTickCount();
+        s_wifi_runtime_retry_count = 0;
+        s_wifi_runtime_last_delay_ms = 0;
+    }
+
+    if (s_wifi_runtime_reconnect_pending) {
+        return;
+    }
+
+    next_attempt = s_wifi_runtime_retry_count + 1U;
+    outage_ms = runtime_wifi_outage_elapsed_ms();
+    if (runtime_wifi_reboot_budget_exhausted(next_attempt, outage_ms)) {
+        runtime_wifi_reboot_now("budget_exhausted_before_schedule");
+        return;
+    }
+
+    delay_ms = runtime_wifi_retry_delay_ms(next_attempt);
+    delay_ticks = pdMS_TO_TICKS(delay_ms);
+    if (delay_ticks == 0) {
+        delay_ticks = 1;
+    }
+
+    s_wifi_runtime_retry_count = next_attempt;
+    s_wifi_runtime_last_delay_ms = delay_ms;
+    s_wifi_runtime_reconnect_pending = true;
+    ESP_LOGI(TAG,
+             "Runtime WiFi reconnect scheduled in %lu ms (attempt %u/%u)",
+             (unsigned long)delay_ms,
+             (unsigned)s_wifi_runtime_retry_count,
+             (unsigned)WIFI_RUNTIME_MAX_ATTEMPTS);
+
+    if (!s_wifi_runtime_retry_timer ||
+        xTimerChangePeriod(s_wifi_runtime_retry_timer, delay_ticks, 0) != pdPASS) {
+        s_wifi_runtime_reconnect_pending = false;
+        ESP_LOGE(TAG, "Failed to schedule runtime WiFi reconnect timer");
+    }
+}
+
+static void runtime_wifi_reconnect_timer_cb(TimerHandle_t timer)
+{
+    esp_err_t err;
+    uint32_t outage_ms;
+
+    (void)timer;
+
+    s_wifi_runtime_reconnect_pending = false;
+    if (!s_wifi_runtime_reconnect_active || s_wifi_connected || s_wifi_connect_in_progress) {
+        return;
+    }
+
+    outage_ms = runtime_wifi_outage_elapsed_ms();
+    if (runtime_wifi_reboot_budget_exhausted(s_wifi_runtime_retry_count, outage_ms)) {
+        runtime_wifi_reboot_now("budget_exhausted_before_attempt");
+        return;
+    }
+
+    ESP_LOGI(TAG, "Runtime WiFi reconnect attempt %u", (unsigned)s_wifi_runtime_retry_count);
+    err = esp_wifi_connect();
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "Runtime WiFi reconnect attempt %u failed to start: %s",
+                 (unsigned)s_wifi_runtime_retry_count,
+                 esp_err_to_name(err));
+        schedule_runtime_wifi_reconnect();
+    }
+}
+
 static void local_admin_wifi_event_handler(void *arg,
                                            esp_event_base_t event_base,
                                            int32_t event_id,
@@ -146,18 +347,30 @@ static void local_admin_wifi_event_handler(void *arg,
         }
 
         if (s_wifi_connect_in_progress && s_wifi_event_group) {
+            s_wifi_connect_in_progress = false;
             xEventGroupSetBits(s_wifi_event_group, LOCAL_ADMIN_WIFI_FAIL_BIT);
+            return;
         }
+
+        schedule_runtime_wifi_reconnect();
         return;
     }
 
     if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
+        bool recovered = s_wifi_runtime_reconnect_active;
+        unsigned int recovered_attempts = s_wifi_runtime_retry_count;
         s_wifi_connected = true;
         s_wifi_connect_in_progress = false;
         s_wifi_retry_num = 0;
+        s_wifi_had_ip = true;
         snprintf(s_current_ip, sizeof(s_current_ip), IPSTR, IP2STR(&event->ip_info.ip));
+        clear_runtime_wifi_reconnect_state();
         ESP_LOGI(TAG, "Connected: %s", s_current_ip);
+        if (recovered) {
+            ESP_LOGI(TAG, "Runtime WiFi recovery succeeded after %u attempt(s)",
+                     (unsigned)recovered_attempts);
+        }
         if (s_wifi_event_group) {
             xEventGroupSetBits(s_wifi_event_group, LOCAL_ADMIN_WIFI_CONNECTED_BIT);
         }
@@ -255,6 +468,17 @@ static esp_err_t ensure_wifi_stack_ready(void)
         }
     }
 
+    if (!s_wifi_runtime_retry_timer) {
+        s_wifi_runtime_retry_timer = xTimerCreate("wifi_reconnect",
+                                                  pdMS_TO_TICKS(1),
+                                                  pdFALSE,
+                                                  NULL,
+                                                  runtime_wifi_reconnect_timer_cb);
+        if (!s_wifi_runtime_retry_timer) {
+            return ESP_ERR_NO_MEM;
+        }
+    }
+
     s_wifi_stack_ready = true;
     return ESP_OK;
 }
@@ -301,6 +525,11 @@ static bool format_wifi_status(char *result, size_t result_len)
     const char *ssid_text = s_target_ssid[0] != '\0'
         ? s_target_ssid
         : (have_credentials ? stored_ssid : "(none)");
+    const char *link_state = wifi_link_state_name();
+    unsigned int retry_count = s_wifi_connect_in_progress
+        ? (unsigned int)s_wifi_retry_num
+        : s_wifi_runtime_retry_count;
+    uint32_t outage_ms = runtime_wifi_outage_elapsed_ms();
     esp_err_t ap_info_err = ESP_FAIL;
 
     if (s_wifi_connected) {
@@ -309,27 +538,31 @@ static bool format_wifi_status(char *result, size_t result_len)
 
     if (s_wifi_connected && ap_info_err == ESP_OK) {
         snprintf(result, result_len,
-                 "WiFi status: provisioned=%s safe_mode=%s driver=%s link=%s ssid=%s ip=%s rssi=%d last_reason=%s",
+                 "WiFi status: provisioned=%s safe_mode=%s driver=%s link=%s ssid=%s ip=%s rssi=%d retry=%u outage_ms=%lu last_reason=%s",
                  have_credentials ? "yes" : "no",
                  s_safe_mode ? "yes" : "no",
                  s_wifi_started ? "started" : "down",
-                 s_wifi_connected ? "connected" : "idle",
+                 link_state,
                  ssid_text,
                  s_current_ip[0] != '\0' ? s_current_ip : "(none)",
                  ap_info.rssi,
+                 retry_count,
+                 (unsigned long)outage_ms,
                  s_last_disconnect_reason ? wifi_disconnect_reason_name(s_last_disconnect_reason) : "none");
         return true;
     }
 
     snprintf(result, result_len,
-             "WiFi status: provisioned=%s safe_mode=%s driver=%s link=%s ssid=%s ip=%s rssi=%s last_reason=%s",
+             "WiFi status: provisioned=%s safe_mode=%s driver=%s link=%s ssid=%s ip=%s rssi=%s retry=%u outage_ms=%lu last_reason=%s",
              have_credentials ? "yes" : "no",
              s_safe_mode ? "yes" : "no",
              s_wifi_started ? "started" : "down",
-             s_wifi_connected ? "connected" : "idle",
+             link_state,
              ssid_text,
              s_current_ip[0] != '\0' ? s_current_ip : "(none)",
              "(n/a)",
+             retry_count,
+             (unsigned long)outage_ms,
              s_last_disconnect_reason ? wifi_disconnect_reason_name(s_last_disconnect_reason) : "none");
 
     return true;
@@ -627,6 +860,8 @@ bool local_admin_wifi_connect_from_store(void)
     s_wifi_retry_num = 0;
     s_wifi_connected = false;
     s_wifi_connect_in_progress = true;
+    s_wifi_had_ip = false;
+    clear_runtime_wifi_reconnect_state();
     xEventGroupClearBits(s_wifi_event_group,
                          LOCAL_ADMIN_WIFI_CONNECTED_BIT | LOCAL_ADMIN_WIFI_FAIL_BIT);
 
@@ -678,5 +913,21 @@ void local_admin_test_set_wifi_scan(const char *scan_text)
 local_admin_action_t local_admin_test_last_action(void)
 {
     return s_test_last_action;
+}
+
+uint32_t local_admin_test_runtime_retry_delay_ms(unsigned int attempt)
+{
+    return runtime_wifi_retry_delay_ms(attempt);
+}
+
+bool local_admin_test_runtime_reboot_budget_exhausted(unsigned int next_attempt,
+                                                      uint32_t outage_ms)
+{
+    return runtime_wifi_reboot_budget_exhausted(next_attempt, outage_ms);
+}
+
+esp_err_t local_admin_test_runtime_refund_boot_count(void)
+{
+    return runtime_wifi_refund_boot_count();
 }
 #endif
