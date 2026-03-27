@@ -140,6 +140,7 @@ When the board is in safe mode, unprovisioned, the LLM path is unavailable, or W
 /wifi status
 /wifi scan
 /bootcount
+/clear-safe-mode
 /gpio all
 /reboot
 ```
@@ -151,6 +152,7 @@ Available local-only commands:
 - `/reboot`
 - `/wifi [status|scan]`
 - `/bootcount`
+- `/clear-safe-mode confirm` (non-destructive; clears only boot-loop state and reboots)
 - `/factory-reset confirm` (destructive; wipes NVS and reboots)
 
 `/wifi status` now distinguishes `connecting`, `reconnecting`, and `connected` link states, and includes the current retry count, outage age, and last disconnect reason. Transient runtime Wi-Fi loss should self-heal; prolonged outages may trigger one controlled reboot so automation does not stall silently forever.

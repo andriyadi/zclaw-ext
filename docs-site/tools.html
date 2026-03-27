@@ -131,6 +131,8 @@
               <tr><td><code>/wifi status</code></td><td>Shows provisioned SSID, driver/link state, IP, RSSI (when connected), retry count, outage age, and last disconnect reason. Runtime drops appear as <code>link=reconnecting</code>.</td></tr>
               <tr><td><code>/wifi scan</code></td><td>Runs a local Wi-Fi scan and lists visible APs with RSSI, auth mode, and channel.</td></tr>
               <tr><td><code>/bootcount</code></td><td>Shows persisted boot-failure count and safe-mode threshold state.</td></tr>
+              <tr><td><code>/clear-safe-mode</code></td><td>Shows the non-destructive confirmation prompt for clearing only the persisted boot-failure counter.</td></tr>
+              <tr><td><code>/clear-safe-mode confirm</code></td><td>Clears only boot-loop state, preserves other NVS data, and reboots.</td></tr>
               <tr><td><code>/reboot</code></td><td>Reboots the board immediately after sending a local acknowledgement.</td></tr>
               <tr><td><code>/factory-reset</code></td><td>Shows the destructive warning and required confirmation syntax.</td></tr>
               <tr><td><code>/factory-reset confirm</code></td><td>Erases NVS (credentials, schedules, memory, boot state) and reboots.</td></tr>

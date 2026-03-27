@@ -59,3 +59,8 @@ esp_err_t boot_guard_set_persisted_count(int count)
     snprintf(buf, sizeof(buf), "%d", count);
     return memory_set(NVS_KEY_BOOT_COUNT, buf);
 }
+
+esp_err_t boot_guard_clear_persisted_count(void)
+{
+    return boot_guard_set_persisted_count(0);
+}

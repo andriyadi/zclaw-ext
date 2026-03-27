@@ -73,6 +73,7 @@
           <pre><code>/wifi status
 /wifi scan
 /bootcount
+/clear-safe-mode
 /gpio all
 /diag all
 /reboot</code></pre>
@@ -91,6 +92,8 @@
               <tr><td><code>/wifi status</code></td><td>Show provisioned SSID, driver/link state, IP, RSSI, retry count, outage age, and last disconnect reason.</td><td>Useful before and after scans, reprovisioning, recovery boots, and runtime Wi-Fi drops. A prolonged outage may end in one controlled reboot after repeated reconnect attempts.</td></tr>
               <tr><td><code>/wifi scan</code></td><td>Scan visible Wi-Fi APs.</td><td>Lists RSSI, auth mode, channel, and frequency for the top visible networks.</td></tr>
               <tr><td><code>/bootcount</code></td><td>Show persisted boot-failure count and safe-mode threshold state.</td><td>Helps explain why the board entered safe mode.</td></tr>
+              <tr><td><code>/clear-safe-mode</code></td><td>Show the non-destructive safe-mode clear warning.</td><td>Does not erase Wi-Fi credentials, tokens, schedules, or memory by itself.</td></tr>
+              <tr><td><code>/clear-safe-mode confirm</code></td><td>Reset the persisted boot counter to zero and reboot.</td><td>Non-destructive: preserves other NVS state and lets the next boot leave safe mode normally.</td></tr>
               <tr><td><code>/reboot</code></td><td>Reboot the board immediately.</td><td>Replies once, then restarts.</td></tr>
               <tr><td><code>/factory-reset</code></td><td>Show the destructive reset warning.</td><td>Non-destructive by itself.</td></tr>
               <tr><td><code>/factory-reset confirm</code></td><td>Erase NVS and reboot.</td><td>Destructive: wipes Wi-Fi credentials, tokens, schedules, memory, and boot state.</td></tr>
@@ -115,8 +118,21 @@
 /wifi status
 /wifi scan
 /diag runtime verbose
+/clear-safe-mode
 /gpio all</code></pre>
-          <p>This is the intended recovery path: inspect boot state, inspect Wi-Fi, inspect runtime health, and only then decide whether to reprovision, move the board, or factory-reset it.</p>
+          <p>This is the intended recovery path: inspect boot state, inspect Wi-Fi, inspect runtime health, and only then decide whether to clear boot-loop state non-destructively, reprovision, move the board, or factory-reset it.</p>
+        </section>
+
+        <section class="section">
+          <h2>Non-Destructive Safe-Mode Clear</h2>
+          <p><code>/clear-safe-mode confirm</code> resets only the stored boot counter and then reboots the board.</p>
+          <ul>
+            <li>Wi-Fi credentials stay intact.</li>
+            <li>LLM and Telegram credentials stay intact.</li>
+            <li>Schedules and persistent memory stay intact.</li>
+            <li>The next boot re-evaluates safe mode from the cleared counter.</li>
+          </ul>
+          <p class="inline-note">Use this when repeated boot failures were expected during development or investigation and you only need to clear boot-loop state. If you only need to restart the board without mutating state, use <code>/reboot</code> instead.</p>
         </section>
 
         <section class="section">

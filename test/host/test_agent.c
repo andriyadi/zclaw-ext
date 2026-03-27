@@ -6,8 +6,10 @@
 #include <string.h>
 
 #include "agent.h"
+#include "boot_guard.h"
 #include "config.h"
 #include "local_admin.h"
+#include "memory.h"
 #include "messages.h"
 #include "mock_freertos.h"
 #include "mock_llm.h"
@@ -552,6 +554,15 @@ TEST(local_admin_commands_are_local_only)
     ASSERT(strstr(text, "only available on the USB serial console") != NULL);
     ASSERT(local_admin_test_last_action() == LOCAL_ADMIN_ACTION_NONE);
 
+    agent_test_process_message_for_chat("/clear-safe-mode confirm", -100222333444LL);
+    ASSERT(mock_llm_request_count() == 0);
+    ASSERT(mock_tools_execute_calls() == 0);
+    ASSERT(recv_telegram_text(telegram_q, text, sizeof(text)) == 1);
+    ASSERT(strstr(text, "only available on the USB serial console") != NULL);
+    ASSERT(recv_channel_text(channel_q, text, sizeof(text)) == 1);
+    ASSERT(strstr(text, "only available on the USB serial console") != NULL);
+    ASSERT(local_admin_test_last_action() == LOCAL_ADMIN_ACTION_NONE);
+
     vQueueDelete(channel_q);
     vQueueDelete(telegram_q);
     return 0;
@@ -591,6 +602,45 @@ TEST(local_admin_commands_bypass_llm_and_report_state)
     ASSERT(recv_channel_text(channel_q, text, sizeof(text)) == 1);
     ASSERT(strstr(text, "persisted=3") != NULL);
     ASSERT(strstr(text, "safe_mode=yes") != NULL);
+
+    vQueueDelete(channel_q);
+    return 0;
+}
+
+TEST(local_admin_clear_safe_mode_command)
+{
+    QueueHandle_t channel_q;
+    char text[CHANNEL_TX_BUF_SIZE];
+    char value[64];
+
+    reset_state();
+
+    channel_q = xQueueCreate(4, sizeof(channel_output_msg_t));
+    ASSERT(channel_q != NULL);
+    agent_test_set_queues(channel_q, NULL);
+    mock_memory_set_kv("boot_count", "3");
+    mock_memory_set_kv("wifi_ssid", "Trident");
+    mock_memory_set_kv("api_key", "test-key");
+
+    agent_test_process_message("/clear-safe-mode");
+    ASSERT(recv_channel_text(channel_q, text, sizeof(text)) == 1);
+    ASSERT(strstr(text, "Run /clear-safe-mode confirm") != NULL);
+    ASSERT(local_admin_test_last_action() == LOCAL_ADMIN_ACTION_NONE);
+    ASSERT(boot_guard_get_persisted_count() == 3);
+    ASSERT(memory_get("wifi_ssid", value, sizeof(value)));
+    ASSERT_STR_EQ(value, "Trident");
+    ASSERT(memory_get("api_key", value, sizeof(value)));
+    ASSERT_STR_EQ(value, "test-key");
+
+    agent_test_process_message("/clear-safe-mode confirm");
+    ASSERT(recv_channel_text(channel_q, text, sizeof(text)) == 1);
+    ASSERT(strstr(text, "Safe mode cleared") != NULL);
+    ASSERT(local_admin_test_last_action() == LOCAL_ADMIN_ACTION_REBOOT);
+    ASSERT(boot_guard_get_persisted_count() == 0);
+    ASSERT(memory_get("wifi_ssid", value, sizeof(value)));
+    ASSERT_STR_EQ(value, "Trident");
+    ASSERT(memory_get("api_key", value, sizeof(value)));
+    ASSERT_STR_EQ(value, "test-key");
 
     vQueueDelete(channel_q);
     return 0;
@@ -1020,6 +1070,13 @@ int test_agent_all(void)
 
     printf("  local_admin_commands_bypass_llm_and_report_state... ");
     if (test_local_admin_commands_bypass_llm_and_report_state() == 0) {
+        printf("OK\n");
+    } else {
+        failures++;
+    }
+
+    printf("  local_admin_clear_safe_mode_command... ");
+    if (test_local_admin_clear_safe_mode_command() == 0) {
         printf("OK\n");
     } else {
         failures++;

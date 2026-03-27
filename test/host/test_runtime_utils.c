@@ -106,8 +106,13 @@ TEST(boot_guard_persistence)
     ASSERT(boot_guard_set_persisted_count(3) == ESP_OK);
     ASSERT(boot_guard_get_persisted_count() == 3);
 
+    ASSERT(boot_guard_clear_persisted_count() == ESP_OK);
+    ASSERT(boot_guard_get_persisted_count() == 0);
+
+    ASSERT(boot_guard_set_persisted_count(3) == ESP_OK);
+
     mock_memory_fail_next_set(ESP_FAIL);
-    ASSERT(boot_guard_set_persisted_count(0) == ESP_FAIL);
+    ASSERT(boot_guard_clear_persisted_count() == ESP_FAIL);
     ASSERT(boot_guard_get_persisted_count() == 3);
     return 0;
 }
