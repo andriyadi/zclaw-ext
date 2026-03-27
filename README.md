@@ -132,7 +132,7 @@ More details in the [Local Dev & Hacking guide](https://zclaw.dev/local-dev.html
 
 ## Local Admin Console
 
-When the board is in safe mode, unprovisioned, or the LLM path is unavailable, you can still operate it over USB serial without Wi-Fi or an LLM round trip.
+When the board is in safe mode, unprovisioned, the LLM path is unavailable, or Wi-Fi is actively recovering from a runtime drop, you can still operate it over USB serial without a network round trip.
 
 ```bash
 ./scripts/monitor.sh /dev/cu.usbmodem1101
@@ -152,6 +152,8 @@ Available local-only commands:
 - `/wifi [status|scan]`
 - `/bootcount`
 - `/factory-reset confirm` (destructive; wipes NVS and reboots)
+
+`/wifi status` now distinguishes `connecting`, `reconnecting`, and `connected` link states, and includes the current retry count, outage age, and last disconnect reason. Transient runtime Wi-Fi loss should self-heal; prolonged outages may trigger one controlled reboot so automation does not stall silently forever.
 
 Full reference: [Local Admin Console](https://zclaw.dev/local-admin.html)
 

@@ -4,6 +4,7 @@
 #include "esp_err.h"
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 typedef enum {
     LOCAL_ADMIN_ACTION_NONE = 0,
@@ -28,6 +29,10 @@ void local_admin_test_reset(void);
 void local_admin_test_set_wifi_status(const char *status_text);
 void local_admin_test_set_wifi_scan(const char *scan_text);
 local_admin_action_t local_admin_test_last_action(void);
+uint32_t local_admin_test_runtime_retry_delay_ms(unsigned int attempt);
+bool local_admin_test_runtime_reboot_budget_exhausted(unsigned int next_attempt,
+                                                      uint32_t outage_ms);
+esp_err_t local_admin_test_runtime_refund_boot_count(void);
 #endif
 
 #endif // LOCAL_ADMIN_H

@@ -126,6 +126,10 @@ typedef enum {
 // -----------------------------------------------------------------------------
 #define WIFI_MAX_RETRY          10
 #define WIFI_RETRY_DELAY_MS     1000
+#define WIFI_RUNTIME_RETRY_BASE_MS  1000
+#define WIFI_RUNTIME_RETRY_MAX_MS   30000
+#define WIFI_RUNTIME_MAX_ATTEMPTS   12
+#define WIFI_RUNTIME_REBOOT_AFTER_MS 180000
 
 // -----------------------------------------------------------------------------
 // Telegram

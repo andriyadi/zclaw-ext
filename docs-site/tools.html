@@ -128,7 +128,7 @@
             <tbody>
               <tr><td><code>/gpio [all|pin|pin high|pin low]</code></td><td>Reads or drives tool-allowed GPIO pins locally without an LLM call.</td></tr>
               <tr><td><code>/diag [scope] [verbose]</code></td><td>Runs local diagnostics over USB, including in safe mode or while intake is paused.</td></tr>
-              <tr><td><code>/wifi status</code></td><td>Shows provisioned SSID, driver/link state, IP, RSSI (when connected), and last disconnect reason.</td></tr>
+              <tr><td><code>/wifi status</code></td><td>Shows provisioned SSID, driver/link state, IP, RSSI (when connected), retry count, outage age, and last disconnect reason. Runtime drops appear as <code>link=reconnecting</code>.</td></tr>
               <tr><td><code>/wifi scan</code></td><td>Runs a local Wi-Fi scan and lists visible APs with RSSI, auth mode, and channel.</td></tr>
               <tr><td><code>/bootcount</code></td><td>Shows persisted boot-failure count and safe-mode threshold state.</td></tr>
               <tr><td><code>/reboot</code></td><td>Reboots the board immediately after sending a local acknowledgement.</td></tr>
