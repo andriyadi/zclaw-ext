@@ -17,6 +17,14 @@ It includes `zclaw` logic plus ESP-IDF/FreeRTOS runtime, Wi-Fi/networking, TLS/c
 Fun to use, fun to hack on.
 <br clear="right" />
 
+## About This Fork
+
+### Azure OpenAI backend
+
+This fork adds support for **Azure OpenAI** as an LLM backend.
+
+Azure OpenAI needs a dedicated backend configuration because it uses an **Azure resource-specific endpoint**, and for new integrations the recommended API is the **Responses API**. Also, the `model` setting must be your **Azure deployment name**, not the base model name.
+
 ## Full Documentation
 
 Use the docs site for complete guides and reference.
