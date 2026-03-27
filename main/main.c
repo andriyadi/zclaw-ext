@@ -265,11 +265,11 @@ void app_main(void)
             ESP_LOGE(TAG, "  2) Reflash firmware and reprovision");
             ESP_LOGE(TAG, "");
             channel_write("\r\nSAFE MODE - local serial commands remain available.\r\n"
-                          "Try /gpio, /diag, /reboot, /wifi, /bootcount, /factory-reset, /help, or /settings.\r\n\r\n");
+                          "Try /gpio, /diag, /reboot, /wifi, /bootcount, /clear-safe-mode, /factory-reset, /help, or /settings.\r\n\r\n");
         } else {
             print_provisioning_help();
             channel_write("\r\nDevice is not provisioned.\r\n"
-                          "Local serial commands remain available: /gpio, /diag, /reboot, /wifi, /bootcount, /factory-reset, /help, /settings.\r\n\r\n");
+                          "Local serial commands remain available: /gpio, /diag, /reboot, /wifi, /bootcount, /clear-safe-mode, /factory-reset, /help, /settings.\r\n\r\n");
         }
         while (1) {
             vTaskDelay(pdMS_TO_TICKS(5000));

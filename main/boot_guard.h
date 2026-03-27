@@ -16,4 +16,7 @@ int boot_guard_get_persisted_count(void);
 // Persists boot counter to storage.
 esp_err_t boot_guard_set_persisted_count(int count);
 
+// Clears the persisted boot counter without touching other NVS state.
+esp_err_t boot_guard_clear_persisted_count(void);
+
 #endif // BOOT_GUARD_H
