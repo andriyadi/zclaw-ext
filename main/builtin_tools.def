@@ -134,3 +134,12 @@ TOOL_ENTRY("delete_user_tool",
            "Delete a user-created tool.",
            "{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\"}},\"required\":[\"name\"]}",
            tools_delete_user_tool_handler)
+
+TOOL_ENTRY("set_display_text",
+           "Update the CoreS3 main display text content.",
+           "{\"type\":\"object\",\"properties\":{\"text\":{\"type\":\"string\"}},\"required\":[\"text\"]}",
+           tools_set_display_text_handler)
+TOOL_ENTRY("set_display_brightness",
+           "Set the CoreS3 display brightness (0-100%).",
+           "{\"type\":\"object\",\"properties\":{\"brightness\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":100}},\"required\":[\"brightness\"]}",
+           tools_set_display_brightness_handler)

@@ -16,6 +16,7 @@ set(zclaw_srcs
     "tools_persona.c"
     "tools_cron.c"
     "tools_system.c"
+    "tools_cores3.c"
     "memory.c"
     "json_util.c"
     "telegram.c"

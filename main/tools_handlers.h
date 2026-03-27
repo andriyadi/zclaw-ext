@@ -54,6 +54,9 @@ bool tools_create_tool_handler(const cJSON *input, char *result, size_t result_l
 bool tools_list_user_tools_handler(const cJSON *input, char *result, size_t result_len);
 bool tools_delete_user_tool_handler(const cJSON *input, char *result, size_t result_len);
 
+bool tools_set_display_text_handler(const cJSON *input, char *result, size_t result_len);
+bool tools_set_display_brightness_handler(const cJSON *input, char *result, size_t result_len);
+
 #ifdef TEST_BUILD
 bool tools_dht_test_decode_bytes(const char *model_name,
                                  int pin,
