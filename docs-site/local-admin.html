@@ -89,7 +89,7 @@
             <tbody>
               <tr><td><code>/gpio [all|pin|pin high|pin low]</code></td><td>Read or drive tool-allowed GPIO pins locally.</td><td>Respects the configured GPIO safety policy.</td></tr>
               <tr><td><code>/diag [scope] [verbose]</code></td><td>Run local runtime diagnostics.</td><td>Scopes match <code>get_diagnostics</code>: <code>quick</code>, <code>runtime</code>, <code>memory</code>, <code>rates</code>, <code>time</code>, <code>all</code>.</td></tr>
-              <tr><td><code>/wifi status</code></td><td>Show provisioned SSID, driver/link state, IP, RSSI, and last disconnect reason.</td><td>Useful before and after scans, reprovisioning, or recovery boots.</td></tr>
+              <tr><td><code>/wifi status</code></td><td>Show provisioned SSID, driver/link state, IP, RSSI, retry count, outage age, and last disconnect reason.</td><td>Useful before and after scans, reprovisioning, recovery boots, and runtime Wi-Fi drops. A prolonged outage may end in one controlled reboot after repeated reconnect attempts.</td></tr>
               <tr><td><code>/wifi scan</code></td><td>Scan visible Wi-Fi APs.</td><td>Lists RSSI, auth mode, channel, and frequency for the top visible networks.</td></tr>
               <tr><td><code>/bootcount</code></td><td>Show persisted boot-failure count and safe-mode threshold state.</td><td>Helps explain why the board entered safe mode.</td></tr>
               <tr><td><code>/clear-safe-mode</code></td><td>Show the non-destructive safe-mode clear warning.</td><td>Does not erase Wi-Fi credentials, tokens, schedules, or memory by itself.</td></tr>
