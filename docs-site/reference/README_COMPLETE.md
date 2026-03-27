@@ -35,7 +35,7 @@ Agent: Done. GPIO2 is now off.
 - **Built-in and custom tools** - Ships with a pre-built set of tools, easy to extend
 - **GPIO control** — Read sensors, toggle relays, control LEDs
 - **Persistent memory** — Remembers things across reboots
-- **Any LLM backend** — Anthropic, OpenAI, OpenRouter, or Ollama (custom endpoint)
+- **Any LLM backend** — Anthropic, OpenAI, Azure OpenAI, OpenRouter, or Ollama (custom endpoint)
 - **$5 hardware** — Just an ESP32 dev board and WiFi
 - **~888 KiB guaranteed max binary** — Fits in dual OTA partitions with ~40% free
 
@@ -628,6 +628,11 @@ export ANTHROPIC_API_KEY=...
 # OpenAI
 export OPENAI_API_KEY=...
 ./scripts/emulate.sh --live-api --live-api-provider openai
+
+# Azure OpenAI
+export AZURE_OPENAI_API_KEY=...
+export AZURE_OPENAI_API_URL="https://<resource>.openai.azure.com/openai/responses?api-version=2025-04-01-preview"
+./scripts/emulate.sh --live-api --live-api-provider azure-openai
 ```
 
 `--live-api` keeps QEMU offline but proxies LLM requests over UART to a host bridge process.

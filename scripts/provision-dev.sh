@@ -38,7 +38,7 @@ Overrides:
   --port <serial-port>
   --ssid <wifi-ssid>
   --pass <wifi-pass>
-  --backend <provider>   anthropic | openai | openrouter | ollama
+  --backend <provider>   anthropic | openai | azure-openai | openrouter | ollama
   --model <model-id>
   --api-key <key>
   --api-url <url>          Custom API endpoint URL
@@ -73,6 +73,7 @@ ZCLAW_API_URL=
 ZCLAW_API_KEY=
 # Or rely on provider env vars instead:
 # OPENAI_API_KEY=
+# AZURE_OPENAI_API_KEY=
 # ANTHROPIC_API_KEY=
 # OPENROUTER_API_KEY=
 # OLLAMA_API_KEY=
@@ -176,6 +177,9 @@ resolve_api_key() {
     case "$backend" in
         openai)
             printf '%s\n' "${OPENAI_API_KEY:-}"
+            ;;
+        azure-openai)
+            printf '%s\n' "${AZURE_OPENAI_API_KEY:-}"
             ;;
         anthropic)
             printf '%s\n' "${ANTHROPIC_API_KEY:-}"
@@ -353,6 +357,12 @@ fi
 
 if [ "$BACKEND" = "ollama" ] && [ -z "$API_URL" ]; then
     echo "Error: API URL not set for Ollama backend."
+    echo "Set ZCLAW_API_URL in $ENV_FILE or pass --api-url."
+    exit 1
+fi
+
+if [ "$BACKEND" = "azure-openai" ] && [ -z "$API_URL" ]; then
+    echo "Error: API URL not set for Azure OpenAI backend."
     echo "Set ZCLAW_API_URL in $ENV_FILE or pass --api-url."
     exit 1
 fi

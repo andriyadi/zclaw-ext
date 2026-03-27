@@ -108,7 +108,7 @@ static void history_rollback_to(int marker, const char *reason)
 
 // Add a message to history
 static void history_add(const char *role, const char *content,
-                        bool is_tool_use, bool is_tool_result,
+                        bool is_tool_use, bool is_tool_result, bool is_response_item,
                         const char *tool_id, const char *tool_name)
 {
     // Drop one oldest message when full.
@@ -125,6 +125,7 @@ static void history_add(const char *role, const char *content,
     msg->content[sizeof(msg->content) - 1] = '\0';
     msg->is_tool_use = is_tool_use;
     msg->is_tool_result = is_tool_result;
+    msg->is_response_item = is_response_item;
 
     if (tool_id) {
         strncpy(msg->tool_id, tool_id, sizeof(msg->tool_id) - 1);
@@ -139,6 +140,11 @@ static void history_add(const char *role, const char *content,
     } else {
         msg->tool_name[0] = '\0';
     }
+}
+
+static void history_add_response_item(const char *item_json)
+{
+    history_add("assistant", item_json, false, false, true, NULL, NULL);
 }
 
 static void queue_channel_response(const char *text)
@@ -503,7 +509,7 @@ static void process_message(const char *user_message, message_source_t source, i
     telegram_polling_paused = true;
 
     // Add user message to history
-    history_add("user", user_message, false, false, NULL, NULL);
+    history_add("user", user_message, false, false, false, NULL, NULL);
 
     int rounds = 0;
     bool done = false;
@@ -647,9 +653,38 @@ static void process_message(const char *user_message, message_source_t source, i
             // Store the tool_input as JSON string for history
             char *input_str = cJSON_PrintUnformatted(tool_input);
 
-            // Add tool_use to history
-            history_add("assistant", input_str ? input_str : "{}",
-                        true, false, tool_id, tool_name);
+            if (llm_uses_responses_api()) {
+                const cJSON *parsed = json_get_parsed_response();
+                const cJSON *output = parsed ? cJSON_GetObjectItem((cJSON *)parsed, "output") : NULL;
+                const cJSON *item = NULL;
+                if (output && cJSON_IsArray(output)) {
+                    cJSON_ArrayForEach(item, output) {
+                        if (!cJSON_IsObject((cJSON *)item)) {
+                            continue;
+                        }
+
+                        // Preserve every raw Responses output item for the next turn.
+                        // OpenAI's Responses tool-calling flow expects the model's prior
+                        // output items (especially reasoning and tool calls) to be fed
+                        // back alongside function_call_output items.
+                        cJSON *copy = cJSON_Duplicate((cJSON *)item, 1);
+                        char *item_json = NULL;
+                        if (copy) {
+                            cJSON_DeleteItemFromObject(copy, "_parsed_arguments");
+                            item_json = cJSON_PrintUnformatted(copy);
+                            cJSON_Delete(copy);
+                        }
+                        if (item_json) {
+                            history_add_response_item(item_json);
+                            free(item_json);
+                        }
+                    }
+                }
+            } else {
+                // Add tool_use to history
+                history_add("assistant", input_str ? input_str : "{}",
+                            true, false, false, tool_id, tool_name);
+            }
             free(input_str);
 
             // Check if it's a user-defined tool
@@ -688,17 +723,17 @@ static void process_message(const char *user_message, message_source_t source, i
             }
 
             // Add tool_result to history
-            history_add("user", s_tool_result_buf, false, true, tool_id, NULL);
+            history_add("user", s_tool_result_buf, false, true, false, tool_id, NULL);
 
             json_free_parsed_response();
             // Continue loop to let Claude see the result
         } else {
             // Text response - we're done
             if (text_out[0] != '\0') {
-                history_add("assistant", text_out, false, false, NULL, NULL);
+                history_add("assistant", text_out, false, false, false, NULL, NULL);
                 send_response(text_out, reply_chat_id);
             } else {
-                history_add("assistant", "(No response from Claude)", false, false, NULL, NULL);
+                history_add("assistant", "(No response from Claude)", false, false, false, NULL, NULL);
                 send_response("(No response from Claude)", reply_chat_id);
             }
             json_free_parsed_response();
@@ -708,7 +743,7 @@ static void process_message(const char *user_message, message_source_t source, i
 
     if (!done) {
         ESP_LOGW(TAG, "Max tool rounds reached");
-        history_add("assistant", "(Reached max tool iterations)", false, false, NULL, NULL);
+        history_add("assistant", "(Reached max tool iterations)", false, false, false, NULL, NULL);
         send_response("(Reached max tool iterations)", reply_chat_id);
         telegram_resume_polling();
         telegram_polling_paused = false;
