@@ -1,6 +1,7 @@
 #include "tools.h"
 #include "tools_handlers.h"
 #include "user_tools.h"
+#include "config.h"
 #include "esp_log.h"
 #include <string.h>
 #include <stdio.h>

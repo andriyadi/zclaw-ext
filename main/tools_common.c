@@ -1,10 +1,19 @@
 #include "tools_common.h"
+#include "tools_handlers.h"
 #include "config.h"
 #include "gpio_policy.h"
 #include "memory_keys.h"
+#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "cJSON.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>
+
+#define DELAY_MAX_MS 60000
+
+static const char *TAG = "tools";
 
 bool tools_validate_string_input(const char *str, size_t max_len, char *error, size_t error_len)
 {
@@ -147,4 +156,32 @@ bool tools_validate_allowed_gpio_pin(int pin, const char *field_name, char *erro
     }
 
     return false;
+}
+
+bool tools_delay_handler(const cJSON *input, char *result, size_t result_len)
+{
+    cJSON *ms_json = cJSON_GetObjectItem(input, "milliseconds");
+
+    if (!ms_json || !cJSON_IsNumber(ms_json)) {
+        snprintf(result, result_len, "Error: 'milliseconds' required (number)");
+        return false;
+    }
+
+    int ms = ms_json->valueint;
+
+    if (ms <= 0) {
+        snprintf(result, result_len, "Error: milliseconds must be positive");
+        return false;
+    }
+
+    if (ms > DELAY_MAX_MS) {
+        snprintf(result, result_len, "Error: max delay is %d ms (got %d)", DELAY_MAX_MS, ms);
+        return false;
+    }
+
+    ESP_LOGI(TAG, "Delaying %d ms...", ms);
+    vTaskDelay(pdMS_TO_TICKS(ms));
+
+    snprintf(result, result_len, "Waited %d ms", ms);
+    return true;
 }

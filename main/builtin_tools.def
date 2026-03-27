@@ -8,6 +8,7 @@
  */
 
 // GPIO
+#if GPIO_TOOLS_ENABLED
 TOOL_ENTRY("gpio_write",
            "Set an allowed GPIO HIGH or LOW.",
            "{\"type\":\"object\",\"properties\":{\"pin\":{\"type\":\"integer\"},\"state\":{\"type\":\"integer\"}},\"required\":[\"pin\",\"state\"]}",
@@ -20,10 +21,12 @@ TOOL_ENTRY("gpio_read_all",
            "Read all allowed GPIO states.",
            "{\"type\":\"object\",\"properties\":{}}",
            tools_gpio_read_all_handler)
+#endif
 TOOL_ENTRY("delay",
            "Wait in milliseconds.",
            "{\"type\":\"object\",\"properties\":{\"milliseconds\":{\"type\":\"integer\"}},\"required\":[\"milliseconds\"]}",
            tools_delay_handler)
+#if I2C_TOOLS_ENABLED
 TOOL_ENTRY("i2c_scan",
            "Scan an I2C bus for devices.",
            "{\"type\":\"object\",\"properties\":{\"sda_pin\":{\"type\":\"integer\"},\"scl_pin\":{\"type\":\"integer\"},\"frequency_hz\":{\"type\":\"integer\"}},\"required\":[\"sda_pin\",\"scl_pin\"]}",
@@ -40,6 +43,7 @@ TOOL_ENTRY("i2c_write_read",
            "Write hex bytes, then read from the same I2C address.",
            "{\"type\":\"object\",\"properties\":{\"sda_pin\":{\"type\":\"integer\"},\"scl_pin\":{\"type\":\"integer\"},\"address\":{\"type\":\"integer\"},\"write_hex\":{\"type\":\"string\"},\"read_length\":{\"type\":\"integer\"},\"frequency_hz\":{\"type\":\"integer\"}},\"required\":[\"sda_pin\",\"scl_pin\",\"address\",\"write_hex\",\"read_length\"]}",
            tools_i2c_write_read_handler)
+#endif
 TOOL_ENTRY("dht_read",
            "Read a DHT11 or DHT22 sensor.",
            "{\"type\":\"object\",\"properties\":{\"pin\":{\"type\":\"integer\"},\"model\":{\"type\":\"string\",\"enum\":[\"dht11\",\"dht22\"]},\"retries\":{\"type\":\"integer\"}},\"required\":[\"pin\",\"model\"]}",

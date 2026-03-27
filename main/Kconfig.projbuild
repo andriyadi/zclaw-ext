@@ -109,4 +109,19 @@ menu "zclaw Configuration"
                 Duration the reset pin must stay low to trigger factory reset.
     endmenu
 
+    config ZCLAW_ENABLE_I2C_TOOLS
+        bool "Enable I2C tools (i2c_scan, i2c_read, i2c_write, i2c_write_read)"
+        default n
+        help
+            Enable I2C bus tools for device scanning and communication.
+            Note: These tools use the legacy I2C driver and conflict with
+            the new I2C master driver used by cores3 hardware.
+
+    config ZCLAW_ENABLE_GPIO_TOOLS
+        bool "Enable GPIO tools (gpio_write, gpio_read, gpio_read_all)"
+        default y
+        help
+            Enable GPIO control tools for reading and writing pin states.
+            Disable if you want to restrict GPIO access completely.
+
 endmenu

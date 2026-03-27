@@ -203,4 +203,22 @@ typedef enum {
 #define RATELIMIT_MAX_PER_DAY       1000    // Max LLM requests per day
 #define RATELIMIT_ENABLED           1       // Set to 0 to disable
 
+// -----------------------------------------------------------------------------
+// I2C Tools
+// -----------------------------------------------------------------------------
+#ifdef CONFIG_ZCLAW_ENABLE_I2C_TOOLS
+#define I2C_TOOLS_ENABLED           1
+#else
+#define I2C_TOOLS_ENABLED           0
+#endif
+
+// -----------------------------------------------------------------------------
+// GPIO Tools
+// -----------------------------------------------------------------------------
+#ifdef CONFIG_ZCLAW_ENABLE_GPIO_TOOLS
+#define GPIO_TOOLS_ENABLED          1
+#else
+#define GPIO_TOOLS_ENABLED          0
+#endif
+
 #endif // CONFIG_H

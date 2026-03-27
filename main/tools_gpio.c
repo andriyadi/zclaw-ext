@@ -4,17 +4,12 @@
 #include "gpio_policy.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-// Max delay to prevent accidental lockups (60 seconds)
-#define DELAY_MAX_MS 60000
-
-static const char *TAG = "tools";
 
 static bool gpio_append_read_state(char **cursor, size_t *remaining, int pin, bool first_pin)
 {
@@ -173,34 +168,6 @@ bool tools_gpio_read_all_handler(const cJSON *input, char *result, size_t result
         return false;
     }
 
-    return true;
-}
-
-bool tools_delay_handler(const cJSON *input, char *result, size_t result_len)
-{
-    cJSON *ms_json = cJSON_GetObjectItem(input, "milliseconds");
-
-    if (!ms_json || !cJSON_IsNumber(ms_json)) {
-        snprintf(result, result_len, "Error: 'milliseconds' required (number)");
-        return false;
-    }
-
-    int ms = ms_json->valueint;
-
-    if (ms <= 0) {
-        snprintf(result, result_len, "Error: milliseconds must be positive");
-        return false;
-    }
-
-    if (ms > DELAY_MAX_MS) {
-        snprintf(result, result_len, "Error: max delay is %d ms (got %d)", DELAY_MAX_MS, ms);
-        return false;
-    }
-
-    ESP_LOGI(TAG, "Delaying %d ms...", ms);
-    vTaskDelay(pdMS_TO_TICKS(ms));
-
-    snprintf(result, result_len, "Waited %d ms", ms);
     return true;
 }
 

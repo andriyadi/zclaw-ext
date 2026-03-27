@@ -1,6 +1,7 @@
 #ifndef TOOLS_HANDLERS_H
 #define TOOLS_HANDLERS_H
 
+#include "config.h"
 #include "cJSON.h"
 #include <stdbool.h>
 #include <stddef.h>
@@ -12,15 +13,21 @@
 // - always write a human-readable message to result.
 
 // GPIO
+#if GPIO_TOOLS_ENABLED
 bool tools_gpio_write_handler(const cJSON *input, char *result, size_t result_len);
 bool tools_gpio_read_handler(const cJSON *input, char *result, size_t result_len);
 bool tools_gpio_read_all_handler(const cJSON *input, char *result, size_t result_len);
+#endif
 bool tools_delay_handler(const cJSON *input, char *result, size_t result_len);
+bool tools_dht_read_handler(const cJSON *input, char *result, size_t result_len);
+
+// I2C (optional, conflicts with new I2C master driver)
+#if I2C_TOOLS_ENABLED
 bool tools_i2c_scan_handler(const cJSON *input, char *result, size_t result_len);
 bool tools_i2c_write_handler(const cJSON *input, char *result, size_t result_len);
 bool tools_i2c_read_handler(const cJSON *input, char *result, size_t result_len);
 bool tools_i2c_write_read_handler(const cJSON *input, char *result, size_t result_len);
-bool tools_dht_read_handler(const cJSON *input, char *result, size_t result_len);
+#endif
 
 // Memory
 bool tools_memory_set_handler(const cJSON *input, char *result, size_t result_len);
