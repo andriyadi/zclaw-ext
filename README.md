@@ -25,6 +25,25 @@ This fork adds support for **Azure OpenAI** as an LLM backend.
 
 Azure OpenAI needs a dedicated backend configuration because it uses an **Azure resource-specific endpoint**, and for new integrations the recommended API is the **Responses API**. Also, the `model` setting must be your **Azure deployment name**, not the base model name.
 
+### Clear safe mode command
+
+This fork also adds a **non-destructive local recovery command** for clearing safe mode.
+
+When a device enters safe mode because of repeated boot failures, you can clear only the persisted boot-failure counter and reboot, without wiping the rest of the device state.
+
+Added local commands:
+
+- `/clear-safe-mode` — shows the confirmation prompt
+- `/clear-safe-mode confirm` — resets only the persisted boot-failure counter and reboots
+
+What stays intact after `clear-safe-mode`:
+
+- Wi-Fi credentials
+- tokens
+- schedules
+- memories
+- other persisted device settings
+
 ## Full Documentation
 
 Use the docs site for complete guides and reference.
