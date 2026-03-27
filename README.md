@@ -140,6 +140,7 @@ When the board is in safe mode, unprovisioned, or the LLM path is unavailable, y
 /wifi status
 /wifi scan
 /bootcount
+/clear-safe-mode
 /gpio all
 /reboot
 ```
@@ -151,6 +152,7 @@ Available local-only commands:
 - `/reboot`
 - `/wifi [status|scan]`
 - `/bootcount`
+- `/clear-safe-mode confirm` (non-destructive; clears only boot-loop state and reboots)
 - `/factory-reset confirm` (destructive; wipes NVS and reboots)
 
 Full reference: [Local Admin Console](https://zclaw.dev/local-admin.html)

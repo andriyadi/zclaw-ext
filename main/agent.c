@@ -367,19 +367,20 @@ static void handle_start_command(int64_t chat_id)
         "- /reboot\n"
         "- /wifi [status|scan]\n"
         "- /bootcount\n"
+        "- /clear-safe-mode confirm\n"
         "- /factory-reset confirm";
     send_response(START_HELP_TEXT, chat_id);
 }
 
 static void handle_settings_command(int64_t chat_id)
 {
-    char settings_text[384];
+    char settings_text[448];
     snprintf(settings_text, sizeof(settings_text),
              "zclaw settings:\n"
              "- Message intake: %s\n"
              "- Persona: %s\n"
              "- Chat commands: /start, /help, /settings, /stop, /resume\n"
-             "- USB local admin: /gpio, /diag, /reboot, /wifi, /bootcount, /factory-reset\n"
+             "- USB local admin: /gpio, /diag, /reboot, /wifi, /bootcount, /clear-safe-mode, /factory-reset\n"
              "- /gpio supports reads and writes (e.g. /gpio 9 low)\n"
              "- Persona changes: ask in normal chat (handled via tool calls)\n"
              "- Device settings are global (e.g., timezone <name>)",

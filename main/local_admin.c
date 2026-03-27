@@ -450,6 +450,7 @@ bool local_admin_is_command(const char *message)
     return agent_is_command(message, "reboot") ||
            agent_is_command(message, "wifi") ||
            agent_is_command(message, "bootcount") ||
+           agent_is_command(message, "clear-safe-mode") ||
            agent_is_command(message, "factory-reset");
 }
 
@@ -504,6 +505,45 @@ bool local_admin_handle_command(const char *message,
                  remaining_before_safe,
                  s_safe_mode ? "yes" : "no",
                  s_device_configured ? "yes" : "no");
+        return true;
+    }
+
+    if (agent_is_command(message, "clear-safe-mode")) {
+        esp_err_t err;
+
+        payload = agent_command_payload(message, "clear-safe-mode");
+        if (!payload || payload[0] == '\0') {
+            snprintf(result, result_len,
+                     "Clear safe mode will reset only the persisted boot-failure counter and reboot. WiFi credentials, tokens, schedules, and memories stay intact. Run /clear-safe-mode confirm to continue.");
+            return true;
+        }
+
+        if (strlen(payload) >= sizeof(payload_buf)) {
+            snprintf(result, result_len, "Error: /clear-safe-mode arguments too long");
+            return false;
+        }
+
+        snprintf(payload_buf, sizeof(payload_buf), "%s", payload);
+        token = strtok(payload_buf, " \t\r\n");
+        extra = strtok(NULL, " \t\r\n");
+        if (!token || strcmp(token, "confirm") != 0 || extra != NULL) {
+            snprintf(result, result_len, "Error: use /clear-safe-mode confirm");
+            return false;
+        }
+
+        err = boot_guard_clear_persisted_count();
+        if (err != ESP_OK) {
+            snprintf(result, result_len,
+                     "Error: failed to clear boot counter: %s",
+                     esp_err_to_name(err));
+            return false;
+        }
+
+        if (action_out) {
+            *action_out = LOCAL_ADMIN_ACTION_REBOOT;
+        }
+        snprintf(result, result_len,
+                 "Safe mode cleared. Persisted boot counter reset to 0; rebooting...");
         return true;
     }
 
