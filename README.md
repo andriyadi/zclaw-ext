@@ -44,6 +44,23 @@ What stays intact after `clear-safe-mode`:
 - memories
 - other persisted device settings
 
+### Improved Wi-Fi runtime recovery
+
+This fork also improves **runtime Wi-Fi recovery** behavior.
+
+Transient Wi-Fi loss during normal operation is treated differently from a true boot failure. Runtime disconnects now use a reconnect flow and do **not** increment the persisted boot-failure counter used for safe mode.
+
+The local command `/wifi status` now provides more detailed runtime visibility, including:
+
+- link state: `connecting`, `reconnecting`, or `connected`
+- current retry count
+- outage age
+- last disconnect reason
+
+This makes it easier to distinguish a normal reconnect attempt from a provisioning issue or a boot-loop/safe-mode condition.
+
+For brief outages, the device should recover automatically. If Wi-Fi remains unavailable for too long, the device may perform one controlled reboot so automation does not remain stuck silently.
+
 ## Full Documentation
 
 Use the docs site for complete guides and reference.
@@ -99,7 +116,7 @@ Non-interactive install:
 - For brand-new built-in capabilities, add a firmware tool (C handler + registry entry) via the Build Your Own Tool docs.
 - Runtime diagnostics via `get_diagnostics` (quick/runtime/memory/rates/time/all scopes)
 - GPIO, DHT, and I2C control with guardrails (including `gpio_read_all`, `i2c_scan`, `i2c_read`/`i2c_write`, and `dht_read`)
-- USB local admin console for recovery, safe mode, and pre-network bring-up
+- USB local admin console for recovery, safe mode, pre-network bring-up, and Wi-Fi runtime diagnostics (`/wifi status`, `/bootcount`, `/clear-safe-mode`)
 - Persistent memory across reboots
 - Persona options: `neutral`, `friendly`, `technical`, `witty`
 - Provider support for Anthropic, OpenAI, Azure OpenAI, OpenRouter, and Ollama (custom endpoint)
