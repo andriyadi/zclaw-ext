@@ -23,8 +23,73 @@
 #include "esp_system.h"
 #include "driver/gpio.h"
 
+
 static const char *TAG = "main";
 static bool s_safe_mode = false;
+
+// === BEGIN CoreS3 Integration ===
+#include "cores3/app.h"
+#include "cores3/cores3_power_mgmt.h"
+#include "cores3/gui_app.h"
+
+typedef struct {
+  bool initialized;
+  bool last_usb_vbus_good;
+  bool power_status_valid;
+  cores3_app_power_status_t last_power_status;
+} custom_cores3_app_context_t;
+
+static custom_cores3_app_context_t s_cores3_main_app_ctx = {0};
+
+
+static int32_t cores3_main_app_init_hook(axp2101_t *pmic, void *user_ctx) {
+  custom_cores3_app_context_t *app_ctx = (custom_cores3_app_context_t *)user_ctx;
+  if (pmic == NULL || app_ctx == NULL) {
+		ESP_LOGE(TAG, "pmic == NULL ? %d app_ctx == NULL ? %d", pmic == NULL, app_ctx == NULL);
+    return AXP2101_ERR_INVALID_ARG;
+  }
+
+  int32_t err = cores3_power_mgmt_charge_policy_init(pmic);
+  if (err != AXP2101_ERR_NONE) {
+    printf("Failed to initialize charge threshold policy: %s\n",
+           cores3_power_mgmt_err_to_name(err));
+    return err;
+  }
+
+  axp2101_status1_t status1 = {0};
+  err = axp2101_status1_get(pmic, &status1);
+  if (err != AXP2101_ERR_NONE) {
+    printf("Failed to read initial AXP2101 VBUS state: %s\n", axp2101_err_to_name(err));
+    return err;
+  }
+
+  app_ctx->initialized = true;
+  return AXP2101_ERR_NONE;
+}
+
+static void custom_cores3_app_refresh(axp2101_t *pmic, void *user_ctx) {
+  custom_cores3_app_context_t *app_ctx = (custom_cores3_app_context_t *)user_ctx;
+  if (pmic == NULL || app_ctx == NULL || !app_ctx->initialized) {
+    return;
+  }
+
+  cores3_power_mgmt_charge_policy_refresh(pmic);
+
+  axp2101_status1_t status1 = {0};
+  int32_t err = axp2101_status1_get(pmic, &status1);
+  if (err != AXP2101_ERR_NONE) {
+    printf("Failed to refresh AXP2101 VBUS state: %s\n", axp2101_err_to_name(err));
+    return;
+  }
+
+  if (status1.vbus_good == app_ctx->last_usb_vbus_good) {
+    return;
+  }
+}
+
+
+// === END CoreS3 Integration ===
+
 
 static void fail_fast_startup(const char *component, esp_err_t err)
 {
@@ -276,6 +341,24 @@ void app_main(void)
         }
     }
 
+		// 9a === BEGIN CORES3 APP MAIN ===
+		cores3_app_configure_power_hooks(&(cores3_app_power_hooks_t) {
+			.update_mask = CORES3_APP_POWER_HOOK_UPDATE_INIT_CALLBACK |
+				CORES3_APP_POWER_HOOK_UPDATE_USER_CTX |
+				CORES3_APP_POWER_HOOK_UPDATE_PERIODIC_CALLBACK,
+			.init_callback = cores3_main_app_init_hook,
+			.periodic_callback = custom_cores3_app_refresh,
+			.user_ctx = &s_cores3_main_app_ctx,
+		});
+
+		xTaskCreate(cores3_app_task,
+				"cores3_app",
+				CORES3_APP_TASK_STACK_SIZE_DEFAULT,
+				NULL,
+				tskIDLE_PRIORITY + 1,
+				NULL);
+		// 9a === END CORES3 APP MAIN ===
+
     // 10. Connect to WiFi
     if (!local_admin_wifi_connect_from_store()) {
         ESP_LOGE(TAG, "WiFi failed, restarting...");
@@ -311,6 +394,8 @@ void app_main(void)
     ESP_LOGI(TAG, "  Ready! Free heap: %lu bytes", esp_get_free_heap_size());
     ESP_LOGI(TAG, "========================================");
     ESP_LOGI(TAG, "");
+
+		cores3_app_set_main_text_content("Ready!");
 
     // 16. Send startup notification on Telegram
     if (telegram_enabled && telegram_is_configured()) {
