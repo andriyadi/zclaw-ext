@@ -29,9 +29,9 @@ Options:
   --port <serial-port>      Serial port (auto-detect if omitted)
   --ssid <wifi-ssid>        WiFi SSID (auto-detected when possible)
   --pass <wifi-pass>        WiFi password (optional)
-  --backend <provider>      anthropic | openai | openrouter | ollama
+  --backend <provider>      anthropic | openai | azure-openai | openrouter | ollama
   --model <model-id>        Model ID (defaults by backend)
-  --api-key <key>           LLM API key (required for anthropic/openai/openrouter)
+  --api-key <key>           LLM API key (required for anthropic/openai/azure-openai/openrouter)
   --api-url <url>           Optional custom API endpoint URL
   --tg-token <token>        Telegram bot token (optional)
   --tg-chat-id <id[,id...]> Telegram chat ID allowlist (optional)
@@ -350,6 +350,7 @@ default_model_for_backend() {
     case "$1" in
         anthropic) echo "claude-sonnet-4-6" ;;
         openai) echo "gpt-5.4" ;;
+        azure-openai) echo "gpt-5.4" ;;
         openrouter) echo "openrouter/auto" ;;
         ollama) echo "qwen3:8b" ;;
         *) echo "claude-sonnet-4-6" ;;
@@ -369,6 +370,10 @@ load_model_menu_for_backend() {
             MODEL_MENU_VALUES=("claude-sonnet-4-6" "claude-haiku-4-5" "claude-opus-4-6" "__custom__")
             ;;
         openai)
+            MODEL_MENU_LABELS=("gpt-5.4 (default)" "gpt-5-mini" "gpt-4.1-mini" "Other model ID")
+            MODEL_MENU_VALUES=("gpt-5.4" "gpt-5-mini" "gpt-4.1-mini" "__custom__")
+            ;;
+        azure-openai)
             MODEL_MENU_LABELS=("gpt-5.4 (default)" "gpt-5-mini" "gpt-4.1-mini" "Other model ID")
             MODEL_MENU_VALUES=("gpt-5.4" "gpt-5-mini" "gpt-4.1-mini" "__custom__")
             ;;
@@ -429,9 +434,64 @@ prompt_for_model() {
 
 validate_backend() {
     case "$1" in
-        anthropic|openai|openrouter|ollama) return 0 ;;
+        anthropic|openai|azure-openai|openrouter|ollama) return 0 ;;
         *) return 1 ;;
     esac
+}
+
+normalize_azure_openai_api_url() {
+    local raw="$1"
+    local trimmed
+    local base
+    local query
+
+    trimmed="$(trim_spaces "$raw")"
+    if [ -z "$trimmed" ]; then
+        return 1
+    fi
+
+    if [[ ! "$trimmed" =~ ^https:// ]]; then
+        return 1
+    fi
+
+    base="${trimmed%%\?*}"
+    query=""
+    if [ "$base" != "$trimmed" ]; then
+        query="${trimmed#*\?}"
+    fi
+    base="${base%/}"
+
+    if [[ ! "$base" =~ /openai(/v1)?/responses$ ]]; then
+        return 1
+    fi
+
+    if [ -z "$query" ] || [[ "$query" != *api-version=* ]]; then
+        return 1
+    fi
+
+    printf '%s\n' "${base}?${query}"
+}
+
+openai_like_max_tokens_field() {
+    local model="$1"
+    local model_name="$model"
+
+    if [[ "$model_name" == */* ]]; then
+        model_name="${model_name##*/}"
+    fi
+
+    if [[ "$model_name" == gpt-5* ]]; then
+        printf '%s\n' "max_completion_tokens"
+    else
+        printf '%s\n' "max_tokens"
+    fi
+}
+
+azure_openai_request_body() {
+    local model="$1"
+    cat <<EOF
+{"model":"$model","max_output_tokens":16,"input":"hello"}
+EOF
 }
 
 normalize_ollama_api_url() {
@@ -769,6 +829,76 @@ PY
     return 1
 }
 
+verify_azure_openai_api_key() {
+    local api_key="$1"
+    local model="$2"
+    local api_url_override="$3"
+    local api_url="${api_url_override:-${AZURE_OPENAI_API_URL:-}}"
+    local response_file
+    local http_code
+    local req_body
+
+    if ! command -v curl >/dev/null 2>&1; then
+        echo "Warning: curl not found; skipping Azure OpenAI API check."
+        return 2
+    fi
+
+    api_url="$(normalize_azure_openai_api_url "$api_url" || true)"
+    if [ -z "$api_url" ]; then
+        echo "Azure OpenAI API check failed: invalid Azure Responses API URL."
+        return 1
+    fi
+
+    req_body="$(azure_openai_request_body "$model")"
+
+    response_file="$(mktemp -t zclaw-azure-openai-check.XXXXXX 2>/dev/null || mktemp)"
+    if ! http_code="$(curl -sS -o "$response_file" -w "%{http_code}" \
+        -H "content-type: application/json" \
+        -H "api-key: $api_key" \
+        "$api_url" \
+        -d "$req_body")"; then
+        rm -f "$response_file"
+        echo "Azure OpenAI API check failed: network/transport error."
+        return 1
+    fi
+
+    if [ "$http_code" = "200" ]; then
+        rm -f "$response_file"
+        echo "Azure OpenAI API check passed (Responses endpoint reachable)."
+        return 0
+    fi
+
+    echo "Azure OpenAI API check failed (HTTP $http_code)."
+    if command -v python3 >/dev/null 2>&1; then
+        python3 - "$response_file" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+p = Path(sys.argv[1])
+try:
+    data = json.loads(p.read_text(encoding="utf-8"))
+except Exception:
+    print("Response preview: " + p.read_text(encoding="utf-8", errors="ignore")[:200])
+    raise SystemExit(0)
+
+msg = ""
+if isinstance(data, dict):
+    if isinstance(data.get("error"), dict):
+        msg = data["error"].get("message") or data["error"].get("code") or ""
+    elif isinstance(data.get("error"), str):
+        msg = data["error"]
+if msg:
+    print("API said: " + msg)
+PY
+    else
+        echo "Response preview: $(head -c 200 "$response_file")"
+    fi
+
+    rm -f "$response_file"
+    return 1
+}
+
 verify_ollama_endpoint() {
     local api_key="$1"
     local _model="$2"
@@ -1010,13 +1140,13 @@ if [ -z "$BACKEND" ]; then
     if [ "$ASSUME_YES" = true ]; then
         BACKEND="openai"
     else
-        read -r -p "LLM provider [openai/anthropic/openrouter/ollama] (default: openai): " BACKEND
+        read -r -p "LLM provider [openai/azure-openai/anthropic/openrouter/ollama] (default: openai): " BACKEND
         BACKEND="${BACKEND:-openai}"
     fi
 fi
 
 if ! validate_backend "$BACKEND"; then
-    echo "Error: invalid backend '$BACKEND' (expected anthropic|openai|openrouter|ollama)"
+    echo "Error: invalid backend '$BACKEND' (expected anthropic|openai|azure-openai|openrouter|ollama)"
     exit 1
 fi
 
@@ -1040,6 +1170,21 @@ if [ "$BACKEND" = "ollama" ]; then
     API_URL="$(normalize_ollama_api_url "$API_URL" || true)"
     if [ -z "$API_URL" ]; then
         echo "Error: invalid --api-url. Expected http(s) URL."
+        exit 1
+    fi
+fi
+
+if [ "$BACKEND" = "azure-openai" ]; then
+    if [ -z "$API_URL" ]; then
+        if [ "$ASSUME_YES" = true ]; then
+            echo "Error: --api-url is required with --backend azure-openai in --yes mode"
+            exit 1
+        fi
+        read -r -p "Azure OpenAI Responses API URL (for example https://.../openai/responses?api-version=...): " API_URL
+    fi
+    API_URL="$(normalize_azure_openai_api_url "$API_URL" || true)"
+    if [ -z "$API_URL" ]; then
+        echo "Error: invalid --api-url for Azure OpenAI. Expected https://.../openai/responses?api-version=... or https://.../openai/v1/responses?api-version=..."
         exit 1
     fi
 fi
@@ -1068,6 +1213,10 @@ if [ "$VERIFY_API_KEY" = true ]; then
         openai)
             VERIFY_LABEL="OpenAI"
             VERIFY_FN="verify_openai_api_key"
+            ;;
+        azure-openai)
+            VERIFY_LABEL="Azure OpenAI"
+            VERIFY_FN="verify_azure_openai_api_key"
             ;;
         openrouter)
             VERIFY_LABEL="OpenRouter"
@@ -1100,6 +1249,8 @@ if [ "$VERIFY_API_KEY" = true ]; then
             echo ""
             if [ "$BACKEND" = "ollama" ]; then
                 read -r -p "Re-enter Ollama endpoint URL and retry? [Y/n] " retry_key
+            elif [ "$BACKEND" = "azure-openai" ]; then
+                read -r -p "Re-enter Azure OpenAI API key and URL and retry? [Y/n] " retry_key
             else
                 read -r -p "Re-enter API key and retry? [Y/n] " retry_key
             fi
@@ -1110,6 +1261,13 @@ if [ "$VERIFY_API_KEY" = true ]; then
                     API_URL="$(normalize_ollama_api_url "$API_URL" || true)"
                     if [ -z "$API_URL" ]; then
                         echo "Valid API URL is required."
+                    fi
+                elif [ "$BACKEND" = "azure-openai" ]; then
+                    read -r -p "LLM API key (input is visible): " API_KEY
+                    read -r -p "Azure OpenAI Responses API URL (for example https://.../openai/responses?api-version=...): " API_URL
+                    API_URL="$(normalize_azure_openai_api_url "$API_URL" || true)"
+                    if [ -z "$API_KEY" ] || [ -z "$API_URL" ]; then
+                        echo "Valid API key and Azure OpenAI URL are required."
                     fi
                 else
                     read -r -p "LLM API key (input is visible): " API_KEY

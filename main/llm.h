@@ -4,6 +4,7 @@
 #include "config.h"
 #include "esp_err.h"
 #include <stdbool.h>
+#include <stddef.h>
 
 // Initialize the LLM HTTP client
 esp_err_t llm_init(void);
@@ -30,8 +31,11 @@ const char *llm_get_default_model(void);
 // Get current model (user-configured or default)
 const char *llm_get_model(void);
 
-// Check if backend uses OpenAI-compatible format (OpenAI, OpenRouter, Ollama)
+// Check if backend uses OpenAI-compatible format (OpenAI, Azure OpenAI, OpenRouter, Ollama)
 bool llm_is_openai_format(void);
+
+// Check if backend uses the Responses API request/response shape.
+bool llm_uses_responses_api(void);
 
 #if CONFIG_ZCLAW_STUB_LLM
 // Host-test helper: indicates whether an API key is currently loaded in runtime state.

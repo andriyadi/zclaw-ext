@@ -21,7 +21,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --live-api-provider)
             if [ $# -lt 2 ]; then
-                echo "Error: --live-api-provider requires a value: auto|anthropic|openai"
+                echo "Error: --live-api-provider requires a value: auto|anthropic|openai|azure-openai"
                 exit 1
             fi
             LIVE_API_PROVIDER="$2"
@@ -32,14 +32,14 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         *)
-            echo "Usage: $0 [--live-api] [--live-api-provider auto|anthropic|openai] [--live-api-logs]"
+            echo "Usage: $0 [--live-api] [--live-api-provider auto|anthropic|openai|azure-openai] [--live-api-logs]"
             exit 1
             ;;
     esac
 done
 
-if [[ "$LIVE_API_PROVIDER" != "auto" && "$LIVE_API_PROVIDER" != "anthropic" && "$LIVE_API_PROVIDER" != "openai" ]]; then
-    echo "Error: invalid --live-api-provider '$LIVE_API_PROVIDER' (expected auto|anthropic|openai)"
+if [[ "$LIVE_API_PROVIDER" != "auto" && "$LIVE_API_PROVIDER" != "anthropic" && "$LIVE_API_PROVIDER" != "openai" && "$LIVE_API_PROVIDER" != "azure-openai" ]]; then
+    echo "Error: invalid --live-api-provider '$LIVE_API_PROVIDER' (expected auto|anthropic|openai|azure-openai)"
     exit 1
 fi
 
@@ -85,6 +85,16 @@ if [ "$LIVE_API_MODE" -eq 1 ]; then
                 exit 1
             fi
             ;;
+        azure-openai)
+            if [ -z "${AZURE_OPENAI_API_KEY:-}" ]; then
+                echo "Error: AZURE_OPENAI_API_KEY is required for --live-api-provider azure-openai"
+                exit 1
+            fi
+            if [ -z "${AZURE_OPENAI_API_URL:-}" ]; then
+                echo "Error: AZURE_OPENAI_API_URL is required for --live-api-provider azure-openai"
+                exit 1
+            fi
+            ;;
         auto)
             if [ -z "${ANTHROPIC_API_KEY:-}" ] && [ -z "${OPENAI_API_KEY:-}" ]; then
                 echo "Error: set ANTHROPIC_API_KEY or OPENAI_API_KEY for --live-api mode"
@@ -123,6 +133,8 @@ if [ "$LIVE_API_MODE" -eq 1 ]; then
         echo "Using ANTHROPIC_API_KEY from host environment."
     elif [ "$LIVE_API_PROVIDER" = "openai" ]; then
         echo "Using OPENAI_API_KEY from host environment."
+    elif [ "$LIVE_API_PROVIDER" = "azure-openai" ]; then
+        echo "Using AZURE_OPENAI_API_KEY and AZURE_OPENAI_API_URL from host environment."
     else
         echo "Auto mode: bridge infers provider from request format (Anthropic/OpenAI)."
     fi
