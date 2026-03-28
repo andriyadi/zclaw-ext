@@ -1,5 +1,6 @@
 #include "tools_handlers.h"
 #include "cores3/app.h"
+#include <axp2101/axp2101.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -50,5 +51,44 @@ bool tools_set_display_brightness_handler(const cJSON *input, char *result, size
     }
 
     snprintf(result, result_len, "Display brightness set to %d%%", brightness);
+    return true;
+}
+
+bool tools_get_battery_percentage_handler(const cJSON *input, char *result, size_t result_len)
+{
+    (void)input;
+    uint8_t percent = 0;
+    int32_t err = cores3_app_battery_percentage_get(&percent);
+    if (err != AXP2101_ERR_NONE) {
+        snprintf(result, result_len, "Error: failed to read battery percentage (%s)", axp2101_err_to_name(err));
+        return false;
+    }
+    snprintf(result, result_len, "Battery: %u%%", (unsigned)percent);
+    return true;
+}
+
+bool tools_get_battery_voltage_handler(const cJSON *input, char *result, size_t result_len)
+{
+    (void)input;
+    uint16_t voltage_mv = 0;
+    int32_t err = cores3_app_battery_voltage_get(&voltage_mv);
+    if (err != AXP2101_ERR_NONE) {
+        snprintf(result, result_len, "Error: failed to read battery voltage (%s)", axp2101_err_to_name(err));
+        return false;
+    }
+    snprintf(result, result_len, "Battery voltage: %u mV", (unsigned)voltage_mv);
+    return true;
+}
+
+bool tools_get_display_brightness_handler(const cJSON *input, char *result, size_t result_len)
+{
+    (void)input;
+    uint8_t brightness = 0;
+    int32_t err = cores3_app_display_brightness_get(&brightness);
+    if (err != AXP2101_ERR_NONE) {
+        snprintf(result, result_len, "Error: failed to read display brightness (%s)", axp2101_err_to_name(err));
+        return false;
+    }
+    snprintf(result, result_len, "Display brightness: %u%%", (unsigned)brightness);
     return true;
 }

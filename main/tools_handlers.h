@@ -56,6 +56,9 @@ bool tools_delete_user_tool_handler(const cJSON *input, char *result, size_t res
 
 bool tools_set_display_text_handler(const cJSON *input, char *result, size_t result_len);
 bool tools_set_display_brightness_handler(const cJSON *input, char *result, size_t result_len);
+bool tools_get_battery_percentage_handler(const cJSON *input, char *result, size_t result_len);
+bool tools_get_battery_voltage_handler(const cJSON *input, char *result, size_t result_len);
+bool tools_get_display_brightness_handler(const cJSON *input, char *result, size_t result_len);
 
 #ifdef TEST_BUILD
 bool tools_dht_test_decode_bytes(const char *model_name,

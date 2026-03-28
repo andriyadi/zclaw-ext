@@ -62,5 +62,7 @@ int32_t cores3_app_lcd_backlight_voltage_get(uint16_t *voltage_mv);
 int32_t cores3_app_display_brightness_set(uint8_t brightness_percent);
 int32_t cores3_app_display_brightness_get(uint8_t *brightness_percent);
 int32_t cores3_app_set_main_text_content(const char *text);
+int32_t cores3_app_battery_percentage_get(uint8_t *out_percent);
+int32_t cores3_app_battery_voltage_get(uint16_t *out_mv);
 void cores3_app_main(void);
 void cores3_app_task(void *task_context);

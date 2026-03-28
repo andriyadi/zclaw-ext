@@ -326,6 +326,41 @@ int32_t cores3_app_display_brightness_get(uint8_t *brightness_percent) {
   return AXP2101_ERR_NONE;
 }
 
+int32_t cores3_app_battery_percentage_get(uint8_t *out_percent) {
+  if (out_percent == NULL) {
+    return AXP2101_ERR_INVALID_ARG;
+  }
+
+  if (!app.board_initialized) {
+    return AXP2101_ERR_INVALID_STATE;
+  }
+
+  axp2101_fuel_gauge_t fuel_gauge = {0};
+  int32_t err = axp2101_fuel_gauge_get(&app.pmic, &fuel_gauge);
+  if (err != AXP2101_ERR_NONE) {
+    return err;
+  }
+
+  if (!fuel_gauge.battery_percent_valid) {
+    return AXP2101_ERR_INVALID_STATE;
+  }
+
+  *out_percent = fuel_gauge.battery_percent;
+  return AXP2101_ERR_NONE;
+}
+
+int32_t cores3_app_battery_voltage_get(uint16_t *out_mv) {
+  if (out_mv == NULL) {
+    return AXP2101_ERR_INVALID_ARG;
+  }
+
+  if (!app.board_initialized) {
+    return AXP2101_ERR_INVALID_STATE;
+  }
+
+  return axp2101_adc_vbat_read(&app.pmic, out_mv);
+}
+
 static void cores3_app_cleanup(void) {
   if (app.gui_initialized) {
     cores3_gui_app_deinit(&app.gui);

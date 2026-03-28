@@ -143,3 +143,15 @@ TOOL_ENTRY("set_display_brightness",
            "Set the CoreS3 display brightness (0-100%).",
            "{\"type\":\"object\",\"properties\":{\"brightness\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":100}},\"required\":[\"brightness\"]}",
            tools_set_display_brightness_handler)
+TOOL_ENTRY("get_battery_percentage",
+           "Get battery charge percentage (0-100%).",
+           "{\"type\":\"object\",\"properties\":{}}",
+           tools_get_battery_percentage_handler)
+TOOL_ENTRY("get_battery_voltage",
+           "Get battery voltage in millivolts.",
+           "{\"type\":\"object\",\"properties\":{}}",
+           tools_get_battery_voltage_handler)
+TOOL_ENTRY("get_display_brightness",
+           "Get the CoreS3 display brightness percentage (0-100%).",
+           "{\"type\":\"object\",\"properties\":{}}",
+           tools_get_display_brightness_handler)
