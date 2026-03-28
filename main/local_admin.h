@@ -24,6 +24,8 @@ void local_admin_perform_action(local_admin_action_t action);
 
 bool local_admin_wifi_connect_from_store(void);
 
+void local_admin_refund_boot_count_before_user_reboot(void);
+
 #ifdef TEST_BUILD
 void local_admin_test_reset(void);
 void local_admin_test_set_wifi_status(const char *status_text);
@@ -33,6 +35,7 @@ uint32_t local_admin_test_runtime_retry_delay_ms(unsigned int attempt);
 bool local_admin_test_runtime_reboot_budget_exhausted(unsigned int next_attempt,
                                                       uint32_t outage_ms);
 esp_err_t local_admin_test_runtime_refund_boot_count(void);
+void local_admin_test_user_reboot_refund(void);
 #endif
 
 #endif // LOCAL_ADMIN_H

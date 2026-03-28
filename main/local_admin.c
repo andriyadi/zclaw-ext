@@ -76,6 +76,20 @@ static esp_err_t runtime_wifi_refund_boot_count(void)
     return boot_guard_set_persisted_count(refunded_count);
 }
 
+void local_admin_refund_boot_count_before_user_reboot(void)
+{
+    esp_err_t refund_err = runtime_wifi_refund_boot_count();
+#ifndef TEST_BUILD
+    if (refund_err != ESP_OK) {
+        ESP_LOGW(TAG,
+                 "Failed to refund boot counter before user-initiated reboot: %s",
+                 esp_err_to_name(refund_err));
+    }
+#else
+    (void)refund_err;
+#endif
+}
+
 #ifndef TEST_BUILD
 static EventGroupHandle_t s_wifi_event_group = NULL;
 static TimerHandle_t s_wifi_runtime_retry_timer = NULL;
@@ -856,6 +870,10 @@ void local_admin_perform_action(local_admin_action_t action)
         return;
     }
 
+    if (action == LOCAL_ADMIN_ACTION_REBOOT) {
+        local_admin_refund_boot_count_before_user_reboot();
+    }
+
     vTaskDelay(pdMS_TO_TICKS(250));
 
     if (action == LOCAL_ADMIN_ACTION_FACTORY_RESET_REBOOT) {
@@ -969,5 +987,10 @@ bool local_admin_test_runtime_reboot_budget_exhausted(unsigned int next_attempt,
 esp_err_t local_admin_test_runtime_refund_boot_count(void)
 {
     return runtime_wifi_refund_boot_count();
+}
+
+void local_admin_test_user_reboot_refund(void)
+{
+    local_admin_refund_boot_count_before_user_reboot();
 }
 #endif

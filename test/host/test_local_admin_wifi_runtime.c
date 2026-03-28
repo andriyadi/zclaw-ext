@@ -63,6 +63,23 @@ TEST(runtime_reboot_refunds_boot_count_by_one_with_floor)
     return 0;
 }
 
+TEST(user_reboot_refunds_boot_count_by_one_with_floor)
+{
+    mock_memory_reset();
+    local_admin_test_user_reboot_refund();
+    ASSERT(boot_guard_get_persisted_count() == 0);
+
+    ASSERT(boot_guard_set_persisted_count(3) == ESP_OK);
+    local_admin_test_user_reboot_refund();
+    ASSERT(boot_guard_get_persisted_count() == 2);
+
+    ASSERT(boot_guard_set_persisted_count(1) == ESP_OK);
+    local_admin_test_user_reboot_refund();
+    ASSERT(boot_guard_get_persisted_count() == 0);
+
+    return 0;
+}
+
 int test_local_admin_wifi_runtime_all(void)
 {
     int failures = 0;
@@ -92,6 +109,13 @@ int test_local_admin_wifi_runtime_all(void)
 
     printf("  runtime_reboot_refunds_boot_count_by_one_with_floor... ");
     if (test_runtime_reboot_refunds_boot_count_by_one_with_floor() == 0) {
+        printf("OK\n");
+    } else {
+        failures++;
+    }
+
+    printf("  user_reboot_refunds_boot_count_by_one_with_floor... ");
+    if (test_user_reboot_refunds_boot_count_by_one_with_floor() == 0) {
         printf("OK\n");
     } else {
         failures++;

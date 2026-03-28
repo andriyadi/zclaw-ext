@@ -101,6 +101,11 @@ static struct {
   void *user_ctx;
 } power_hooks = {0};
 
+static struct {
+  cores3_app_reboot_hook_t callback;
+  void *user_ctx;
+} reboot_hooks = {0};
+
 typedef struct {
   aw9523b_t io_expander;
   axp2101_t pmic;
@@ -147,6 +152,20 @@ void cores3_app_configure_power_hooks(const cores3_app_power_hooks_t *hooks) {
 
   if ((hooks->update_mask & CORES3_APP_POWER_HOOK_UPDATE_USER_CTX) != 0U) {
     power_hooks.user_ctx = hooks->user_ctx;
+  }
+}
+
+void cores3_app_configure_reboot_hooks(const cores3_app_reboot_hooks_t *hooks) {
+  if (hooks == NULL) {
+    return;
+  }
+
+  if (hooks->callback != NULL) {
+    reboot_hooks.callback = hooks->callback;
+  }
+
+  if (hooks->user_ctx != NULL) {
+    reboot_hooks.user_ctx = hooks->user_ctx;
   }
 }
 
@@ -629,6 +648,9 @@ static void cores3_app_handle_gui_event(cores3_gui_app_event_t event,
 
   switch (event) {
   case CORES3_GUI_APP_EVENT_REBOOT_BUTTON_PRESSED:
+    if (reboot_hooks.callback != NULL) {
+      reboot_hooks.callback(reboot_hooks.user_ctx);
+    }
     esp_restart();
 
   default:

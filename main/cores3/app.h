@@ -41,7 +41,16 @@ typedef struct {
   void *user_ctx;
 } cores3_app_power_hooks_t;
 
+typedef void (*cores3_app_reboot_hook_t)(void *user_ctx);
+
+typedef struct {
+  uint32_t update_mask;
+  cores3_app_reboot_hook_t callback;
+  void *user_ctx;
+} cores3_app_reboot_hooks_t;
+
 void cores3_app_configure_power_hooks(const cores3_app_power_hooks_t *hooks);
+void cores3_app_configure_reboot_hooks(const cores3_app_reboot_hooks_t *hooks);
 cores3_app_power_status_t cores3_app_power_status_get(void);
 const char *cores3_app_power_status_to_string(cores3_app_power_status_t status);
 int32_t cores3_app_display_power_save_override_set(

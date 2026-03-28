@@ -87,6 +87,11 @@ static void custom_cores3_app_refresh(axp2101_t *pmic, void *user_ctx) {
   }
 }
 
+static void cores3_main_app_reboot_hook(void *user_ctx) {
+		(void)user_ctx;
+		local_admin_refund_boot_count_before_user_reboot();
+}
+
 
 // === END CoreS3 Integration ===
 
@@ -196,6 +201,29 @@ void app_main(void)
     ESP_LOGI(TAG, "  AI Agent on ESP32");
     ESP_LOGI(TAG, "========================================");
     ESP_LOGI(TAG, "");
+		
+		// === BEGIN CORES3 APP MAIN ===
+		cores3_app_configure_power_hooks(&(cores3_app_power_hooks_t) {
+			.update_mask = CORES3_APP_POWER_HOOK_UPDATE_INIT_CALLBACK |
+				CORES3_APP_POWER_HOOK_UPDATE_USER_CTX |
+				CORES3_APP_POWER_HOOK_UPDATE_PERIODIC_CALLBACK,
+			.init_callback = cores3_main_app_init_hook,
+			.periodic_callback = custom_cores3_app_refresh,
+			.user_ctx = &s_cores3_main_app_ctx,
+		});
+
+		cores3_app_configure_reboot_hooks(&(cores3_app_reboot_hooks_t) {
+			.callback = cores3_main_app_reboot_hook,
+			.user_ctx = NULL,
+		});
+
+		xTaskCreate(cores3_app_task,
+				"cores3_app",
+				CORES3_APP_TASK_STACK_SIZE_DEFAULT,
+				NULL,
+				tskIDLE_PRIORITY + 1,
+				NULL);
+		// === END CORES3 APP MAIN ===
 
     // 1. Initialize NVS
     ESP_ERROR_CHECK(memory_init());
@@ -341,23 +369,6 @@ void app_main(void)
         }
     }
 
-		// 9a === BEGIN CORES3 APP MAIN ===
-		cores3_app_configure_power_hooks(&(cores3_app_power_hooks_t) {
-			.update_mask = CORES3_APP_POWER_HOOK_UPDATE_INIT_CALLBACK |
-				CORES3_APP_POWER_HOOK_UPDATE_USER_CTX |
-				CORES3_APP_POWER_HOOK_UPDATE_PERIODIC_CALLBACK,
-			.init_callback = cores3_main_app_init_hook,
-			.periodic_callback = custom_cores3_app_refresh,
-			.user_ctx = &s_cores3_main_app_ctx,
-		});
-
-		xTaskCreate(cores3_app_task,
-				"cores3_app",
-				CORES3_APP_TASK_STACK_SIZE_DEFAULT,
-				NULL,
-				tskIDLE_PRIORITY + 1,
-				NULL);
-		// 9a === END CORES3 APP MAIN ===
 
     // 10. Connect to WiFi
     if (!local_admin_wifi_connect_from_store()) {
